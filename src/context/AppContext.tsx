@@ -18,6 +18,7 @@ interface AppContextType {
   updateProduct: (id: string, updates: Partial<Omit<Product, 'id' | 'workspaceId'>>) => Promise<void>;
   addOrder: (order: Omit<Order, 'id' | 'workspaceId'>) => Promise<void>;
   updateOrderStatus: (id: string, status: Order['status']) => Promise<void>;
+  updateOrder: (id: string, updates: Partial<Omit<Order, 'id' | 'workspaceId'>>) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
   addExpense: (expense: Omit<Expense, 'id' | 'workspaceId'>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
@@ -124,6 +125,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const updateOrderStatus = async (id: string, status: Order['status']) => {
     await updateDoc(doc(db, 'orders', id), { status });
   };
+  const updateOrder = async (id: string, updates: Partial<Omit<Order, 'id' | 'workspaceId'>>) => {
+    await updateDoc(doc(db, 'orders', id), updates);
+  };
   const deleteOrder = async (id: string) => {
     await deleteDoc(doc(db, 'orders', id));
   };
@@ -160,7 +164,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{
       isAuthenticated, login, logout, products, orders, expenses, partners,
       addProduct, deleteProduct, updateProduct,
-      addOrder, updateOrderStatus, deleteOrder,
+      addOrder, updateOrderStatus, updateOrder, deleteOrder,
       addExpense, deleteExpense,
       updatePartners, addPartner, deletePartner
     }}>

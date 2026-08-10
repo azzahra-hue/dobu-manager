@@ -1,45 +1,153 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { formatRupiah, formatDate } from '../utils/format';
-import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload, Edit2, Check, X } from 'lucide-react';
 import Papa from 'papaparse';
 
 import { Order } from '../types';
 
 export default function OrdersPage() {
-  const { orders, products, addOrder, updateOrderStatus, deleteOrder } = useAppContext();
+  const { orders, products, addOrder, updateOrderStatus, updateOrder, deleteOrder } = useAppContext();
   const [isAdding, setIsAdding] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const [editingBatch, setEditingBatch] = useState<string | null>(null);
+  const [editBatchValue, setEditBatchValue] = useState<string>('');
+  
+  const [editingCustomer, setEditingCustomer] = useState<{batch: string, name: string} | null>(null);
+  const [editCustomerValue, setEditCustomerValue] = useState<string>('');
+
+  const [editingCustomerFull, setEditingCustomerFull] = useState<{
+    originalBatch: string;
+    originalName: string;
+    batch: string;
+    customerName: string;
+    date: string;
+    items: {
+      id: string;
+      productId: string;
+      packageType: 'danus' | 'po';
+      qty: number;
+      status: Order['status'];
+      isNew?: boolean;
+      isDeleted?: boolean;
+    }[];
+  } | null>(null);
+
+  const handleSaveCustomerFull = async () => {
+    if (!editingCustomerFull) return;
+    
+    for (const item of editingCustomerFull.items) {
+      if (item.isDeleted) {
+        if (!item.isNew) {
+          await deleteOrder(item.id);
+        }
+        continue;
+      }
+
+      const product = products.find(p => p.id === item.productId);
+      if (!product) continue;
+      
+      const price = item.packageType === 'danus' ? product.priceDanus : product.pricePO;
+      const total = price * item.qty;
+
+      if (item.isNew) {
+        await addOrder({
+          batch: editingCustomerFull.batch,
+          customerName: editingCustomerFull.customerName,
+          productId: item.productId,
+          packageType: item.packageType,
+          qty: item.qty,
+          date: editingCustomerFull.date,
+          total,
+          status: item.status
+        });
+      } else {
+        await updateOrder(item.id, {
+          batch: editingCustomerFull.batch,
+          customerName: editingCustomerFull.customerName,
+          productId: item.productId,
+          packageType: item.packageType,
+          qty: item.qty,
+          date: editingCustomerFull.date,
+          total
+        });
+      }
+    }
+    setEditingCustomerFull(null);
+  };
+
+
+  const handleSaveBatch = (oldBatch: string) => {
+    if (editBatchValue.trim() && editBatchValue.trim() !== oldBatch) {
+      const ordersInBatch = orders.filter(o => o.batch === oldBatch);
+      ordersInBatch.forEach(o => {
+        updateOrder(o.id, { batch: editBatchValue.trim() });
+      });
+    }
+    setEditingBatch(null);
+  };
+
+  const handleSaveCustomer = (batch: string, oldName: string) => {
+    if (editCustomerValue.trim() && editCustomerValue.trim() !== oldName) {
+      const customerOrders = orders.filter(o => o.batch === batch && o.customerName.trim().toLowerCase() === oldName.toLowerCase());
+      customerOrders.forEach(o => {
+        updateOrder(o.id, { customerName: editCustomerValue.trim() });
+      });
+    }
+    setEditingCustomer(null);
+  };
+  
   const [newOrder, setNewOrder] = useState({
     batch: '',
     customerName: '',
-    productId: '',
-    packageType: 'danus' as 'danus' | 'po',
-    qty: 1,
     date: new Date().toISOString().split('T')[0]
   });
+  
+  const [orderItems, setOrderItems] = useState([
+    { id: Date.now().toString(), productId: '', packageType: 'danus' as 'danus' | 'po', qty: 1 }
+  ]);
+
+  const updateOrderItem = (id: string, field: string, value: any) => {
+    setOrderItems(orderItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+  
+  const addOrderItem = () => {
+    setOrderItems([...orderItems, { id: Date.now().toString(), productId: '', packageType: 'danus', qty: 1 }]);
+  };
+  
+  const removeOrderItem = (id: string) => {
+    setOrderItems(orderItems.filter(item => item.id !== id));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const product = products.find(p => p.id === newOrder.productId);
-    if (!product) return;
-
-    const price = newOrder.packageType === 'danus' ? product.priceDanus : product.pricePO;
-
-    addOrder({
-      batch: newOrder.batch || 'Tanpa Batch',
-      customerName: newOrder.customerName,
-      productId: newOrder.productId,
-      packageType: newOrder.packageType,
-      qty: newOrder.qty,
-      date: newOrder.date,
-      total: price * newOrder.qty,
-      status: 'pending'
+    
+    let itemsAdded = 0;
+    
+    orderItems.forEach(item => {
+      const product = products.find(p => p.id === item.productId);
+      if (!product) return;
+      const price = item.packageType === 'danus' ? product.priceDanus : product.pricePO;
+      
+      addOrder({
+        batch: newOrder.batch || 'Tanpa Batch',
+        customerName: newOrder.customerName,
+        productId: item.productId,
+        packageType: item.packageType,
+        qty: item.qty,
+        date: newOrder.date,
+        total: price * item.qty,
+        status: 'pending'
+      });
+      itemsAdded++;
     });
     
-    setNewOrder({ ...newOrder, customerName: '', qty: 1, productId: '' });
+    if (itemsAdded > 0) {
+      setNewOrder({ ...newOrder, customerName: '' });
+      setOrderItems([{ id: Date.now().toString(), productId: '', packageType: 'danus', qty: 1 }]);
+    }
   };
 
   const getProductName = (id: string) => products.find(p => p.id === id)?.name || 'Produk dihapus';
@@ -157,87 +265,116 @@ export default function OrdersPage() {
       {isAdding && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-200">
           <h3 className="text-lg font-bold mb-4 text-gray-800">Tambah Pesanan (Simpan & Tambah Lagi)</h3>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-600">Batch (Misal: Batch 1)</label>
-              <input 
-                list="batch-list"
-                required
-                placeholder="Batch pesanan"
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
-                value={newOrder.batch}
-                onChange={e => setNewOrder({...newOrder, batch: e.target.value})}
-              />
-              <datalist id="batch-list">
-                {uniqueBatches.map(b => (
-                  <option key={b} value={b} />
-                ))}
-              </datalist>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-600">Batch (Misal: Batch 1)</label>
+                <input 
+                  list="batch-list"
+                  required
+                  placeholder="Batch pesanan"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={newOrder.batch}
+                  onChange={e => setNewOrder({...newOrder, batch: e.target.value})}
+                />
+                <datalist id="batch-list">
+                  {uniqueBatches.map(b => (
+                    <option key={b} value={b} />
+                  ))}
+                </datalist>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-600">Tanggal</label>
+                <input 
+                  type="date" 
+                  required
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={newOrder.date}
+                  onChange={e => setNewOrder({...newOrder, date: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-600">Nama Pemesan</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Misal: Budi"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={newOrder.customerName}
+                  onChange={e => setNewOrder({...newOrder, customerName: e.target.value})}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-600">Tanggal</label>
-              <input 
-                type="date" 
-                required
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
-                value={newOrder.date}
-                onChange={e => setNewOrder({...newOrder, date: e.target.value})}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-600">Nama Pemesan</label>
-              <input 
-                type="text" 
-                required
-                placeholder="Misal: Budi"
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
-                value={newOrder.customerName}
-                onChange={e => setNewOrder({...newOrder, customerName: e.target.value})}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-600">Produk</label>
-              <select 
-                required
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none bg-white"
-                value={newOrder.productId}
-                onChange={e => setNewOrder({...newOrder, productId: e.target.value})}
+
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-600">Daftar Produk Pesanan</label>
+              {orderItems.map((item) => (
+                <div key={item.id} className="flex flex-col md:flex-row gap-4 items-end p-4 bg-gray-50/50 rounded-xl border border-gray-200">
+                  <div className="space-y-1.5 flex-1 w-full">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produk</label>
+                    <select 
+                      required
+                      className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none bg-white text-sm"
+                      value={item.productId}
+                      onChange={e => updateOrderItem(item.id, 'productId', e.target.value)}
+                    >
+                      <option value="" disabled>Pilih Produk...</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5 w-full md:w-40 flex-none">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Paket Harga</label>
+                    <select 
+                      required
+                      className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none bg-white text-sm"
+                      value={item.packageType}
+                      onChange={e => updateOrderItem(item.id, 'packageType', e.target.value as 'danus' | 'po')}
+                    >
+                      <option value="danus">Danus</option>
+                      <option value="po">Pre-Order (PO)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5 w-full md:w-32 flex-none">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Jumlah (Qty)</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      required
+                      className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none text-sm"
+                      value={item.qty}
+                      onChange={e => updateOrderItem(item.id, 'qty', parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                  {orderItems.length > 1 && (
+                    <button 
+                      type="button"
+                      onClick={() => removeOrderItem(item.id)}
+                      className="w-full md:w-auto h-[42px] px-4 text-red-500 bg-white hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-lg transition-colors flex-none flex items-center justify-center shadow-sm"
+                      title="Hapus Produk"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              
+              <button 
+                type="button" 
+                onClick={addOrderItem}
+                className="text-sky-600 font-medium text-sm hover:text-sky-700 flex items-center gap-1 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition-colors w-fit"
               >
-                <option value="" disabled>Pilih Produk...</option>
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+                <Plus size={16} /> Tambah Produk Lain
+              </button>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-600">Paket Harga</label>
-              <select 
-                required
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none bg-white"
-                value={newOrder.packageType}
-                onChange={e => setNewOrder({...newOrder, packageType: e.target.value as 'danus' | 'po'})}
-              >
-                <option value="danus">Danus</option>
-                <option value="po">Pre-Order (PO)</option>
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-600">Jumlah (Qty)</label>
-              <input 
-                type="number" 
-                min="1"
-                required
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
-                value={newOrder.qty}
-                onChange={e => setNewOrder({...newOrder, qty: parseInt(e.target.value)})}
-              />
-            </div>
-            <div className="lg:col-span-3 flex gap-3">
+
+            <div className="flex gap-3 pt-2">
               <button type="submit" className="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-medium p-2.5 rounded-lg transition-colors">
-                Simpan & Tambah Lagi
+                Simpan Pesanan
               </button>
               <button type="button" onClick={() => setIsAdding(false)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium p-2.5 rounded-lg transition-colors px-6">
-                Tutup
+                Batal
               </button>
             </div>
           </form>
@@ -274,13 +411,49 @@ export default function OrdersPage() {
           return (
             <div key={batch} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
               <div className="bg-amber-50/50 p-4 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <span className="w-2 h-6 bg-amber-500 rounded-full"></span>
-                  {batch}
-                </h3>
-                <span className="text-sm font-medium text-gray-600 bg-white px-3 py-1 rounded-full border border-gray-200">
-                  Total Pesanan: {batchOrders.length}
-                </span>
+                  {editingBatch === batch ? (
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="text" 
+                        value={editBatchValue}
+                        onChange={(e) => setEditBatchValue(e.target.value)}
+                        className="border border-amber-300 rounded px-2 py-1 text-lg font-bold outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                        autoFocus
+                      />
+                      <button onClick={() => handleSaveBatch(batch)} className="text-green-600 hover:bg-green-100 p-1 rounded-full"><Check size={18}/></button>
+                      <button onClick={() => setEditingBatch(null)} className="text-red-500 hover:bg-red-100 p-1 rounded-full"><X size={18}/></button>
+                    </div>
+                  ) : (
+                    <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                      {batch}
+                      <button onClick={() => { setEditingBatch(batch); setEditBatchValue(batch); }} className="text-gray-400 hover:text-sky-600 transition-colors">
+                        <Edit2 size={16} />
+                      </button>
+                    </h3>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-600 bg-white px-3 py-1 rounded-full border border-gray-200">
+                    Total Pesanan: {batchOrders.length}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      setEditingCustomerFull({
+                        originalBatch: batch,
+                        originalName: '',
+                        batch: batch,
+                        customerName: '',
+                        date: new Date().toISOString().split('T')[0],
+                        items: [{ id: Date.now().toString(), productId: '', packageType: 'danus', qty: 1, status: 'pending', isNew: true }]
+                      });
+                    }}
+                    className="text-sm font-medium text-sky-600 bg-sky-50 hover:bg-sky-100 px-3 py-1 rounded-full border border-sky-100 transition-colors flex items-center gap-1"
+                  >
+                    <Plus size={16} /> Tambah Pemesan
+                  </button>
+                </div>
               </div>
               
               <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -305,7 +478,30 @@ export default function OrdersPage() {
 
                         return (
                           <tr key={customer.name} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="p-3 font-medium text-gray-800 align-top pt-4">{customer.name}</td>
+                            <td className="p-3 font-medium text-gray-800 align-top pt-4 group/editname">
+                              {editingCustomer?.batch === batch && editingCustomer?.name === customer.name ? (
+                                <div className="flex flex-col gap-2">
+                                  <input 
+                                    type="text" 
+                                    value={editCustomerValue}
+                                    onChange={(e) => setEditCustomerValue(e.target.value)}
+                                    className="border border-gray-300 rounded px-2 py-1 font-medium outline-none focus:ring-2 focus:ring-sky-500 w-full min-w-[120px]"
+                                    autoFocus
+                                  />
+                                  <div className="flex gap-2">
+                                    <button onClick={() => handleSaveCustomer(batch, customer.name)} className="text-green-600 hover:bg-green-100 p-1 rounded-full"><Check size={16}/></button>
+                                    <button onClick={() => setEditingCustomer(null)} className="text-red-500 hover:bg-red-100 p-1 rounded-full"><X size={16}/></button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span>{customer.name}</span>
+                                  <button onClick={() => { setEditingCustomer({batch, name: customer.name}); setEditCustomerValue(customer.name); }} className="text-gray-400 hover:text-sky-600 transition-colors opacity-0 group-hover/editname:opacity-100 p-1">
+                                    <Edit2 size={14} />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
                             <td className="p-3 text-sm text-gray-600 align-top pt-4">
                               <ul className="space-y-2">
                                 {customer.orders.map(o => (
@@ -342,6 +538,28 @@ export default function OrdersPage() {
                                 title="Copy Jarkom Pembayaran"
                               >
                                 {copiedId === customer.orders[0].id ? <CheckCircle size={18} /> : <MessageSquare size={18} />}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingCustomerFull({
+                                    originalBatch: batch,
+                                    originalName: customer.name,
+                                    batch: batch,
+                                    customerName: customer.name,
+                                    date: customer.orders[0]?.date || new Date().toISOString().split('T')[0],
+                                    items: customer.orders.map(o => ({
+                                      id: o.id,
+                                      productId: o.productId,
+                                      packageType: o.packageType,
+                                      qty: o.qty,
+                                      status: o.status
+                                    }))
+                                  });
+                                }}
+                                className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                title="Edit Pemesan"
+                              >
+                                <Edit2 size={18} />
                               </button>
                               <button 
                                 onClick={() => {
@@ -381,6 +599,132 @@ export default function OrdersPage() {
             </div>
           );
         })
+      )}
+      
+      {editingCustomerFull && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto mt-10">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">{editingCustomerFull.originalName ? 'Edit Detail Pesanan' : 'Tambah Pemesan Baru'}</h3>
+              <button onClick={() => setEditingCustomerFull(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-600">Batch</label>
+                <input 
+                  type="text" 
+                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-sky-500"
+                  value={editingCustomerFull.batch}
+                  onChange={e => setEditingCustomerFull({...editingCustomerFull, batch: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-600">Tanggal</label>
+                <input 
+                  type="date" 
+                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-sky-500"
+                  value={editingCustomerFull.date}
+                  onChange={e => setEditingCustomerFull({...editingCustomerFull, date: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-600">Nama Pemesan</label>
+                <input 
+                  type="text" 
+                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-sky-500"
+                  value={editingCustomerFull.customerName}
+                  onChange={e => setEditingCustomerFull({...editingCustomerFull, customerName: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <label className="text-sm font-medium text-gray-600">Daftar Produk</label>
+              {editingCustomerFull.items.filter(item => !item.isDeleted).map((item, index) => (
+                <div key={item.id} className="flex flex-col md:flex-row gap-4 items-end p-4 bg-gray-50/50 rounded-xl border border-gray-200">
+                  <div className="space-y-1.5 flex-1 w-full">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produk</label>
+                    <select 
+                      className="w-full border border-gray-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+                      value={item.productId}
+                      onChange={e => {
+                        const newItems = [...editingCustomerFull.items];
+                        newItems[editingCustomerFull.items.findIndex(i => i.id === item.id)].productId = e.target.value;
+                        setEditingCustomerFull({...editingCustomerFull, items: newItems});
+                      }}
+                    >
+                      <option value="" disabled>Pilih...</option>
+                      {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5 w-full md:w-40 flex-none">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Paket</label>
+                    <select 
+                      className="w-full border border-gray-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+                      value={item.packageType}
+                      onChange={e => {
+                        const newItems = [...editingCustomerFull.items];
+                        newItems[editingCustomerFull.items.findIndex(i => i.id === item.id)].packageType = e.target.value as 'danus' | 'po';
+                        setEditingCustomerFull({...editingCustomerFull, items: newItems});
+                      }}
+                    >
+                      <option value="danus">Danus</option>
+                      <option value="po">PO</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5 w-full md:w-32 flex-none">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Qty</label>
+                    <input 
+                      type="number" min="1"
+                      className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+                      value={item.qty}
+                      onChange={e => {
+                        const newItems = [...editingCustomerFull.items];
+                        newItems[editingCustomerFull.items.findIndex(i => i.id === item.id)].qty = parseInt(e.target.value) || 1;
+                        setEditingCustomerFull({...editingCustomerFull, items: newItems});
+                      }}
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const newItems = [...editingCustomerFull.items];
+                      newItems[editingCustomerFull.items.findIndex(i => i.id === item.id)].isDeleted = true;
+                      setEditingCustomerFull({...editingCustomerFull, items: newItems});
+                    }}
+                    className="w-full md:w-auto h-[42px] px-4 text-red-500 bg-white hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-lg transition-colors flex-none flex items-center justify-center shadow-sm"
+                    title="Hapus Produk"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
+              
+              <button 
+                onClick={() => {
+                  setEditingCustomerFull({
+                    ...editingCustomerFull,
+                    items: [...editingCustomerFull.items, { id: Date.now().toString(), productId: '', packageType: 'danus', qty: 1, status: 'pending', isNew: true }]
+                  });
+                }}
+                className="text-sky-600 font-medium text-sm hover:text-sky-700 flex items-center gap-1 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition-colors w-fit mt-2"
+              >
+                <Plus size={16} /> Tambah Produk
+              </button>
+            </div>
+            
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
+              <button onClick={handleSaveCustomerFull} className="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-medium p-3 rounded-lg transition-colors">
+                Simpan Perubahan
+              </button>
+              <button onClick={() => setEditingCustomerFull(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium p-3 rounded-lg transition-colors px-6">
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
