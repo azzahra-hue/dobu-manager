@@ -132,107 +132,114 @@ export default function ProductsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {products.map(product => {
-          const isEditing = editingId === product.id;
           return (
             <div key={product.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col group relative">
-              {isEditing ? (
-                <div className="space-y-3 flex-1 flex flex-col">
-                  <div className="flex gap-2">
-                    <div className="w-16">
-                      <label className="text-xs font-medium text-gray-500">Ikon</label>
-                      <input 
-                        type="text" 
-                        maxLength={2}
-                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none text-center"
-                        value={editForm.icon}
-                        onChange={e => setEditForm({...editForm, icon: e.target.value})}
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs font-medium text-gray-500">Nama Produk</label>
-                      <input 
-                        type="text" 
-                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
-                        value={editForm.name}
-                        onChange={e => setEditForm({...editForm, name: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Modal/HPP</label>
-                    <input 
-                      type="number" 
-                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
-                      value={editForm.costPrice}
-                      onChange={e => setEditForm({...editForm, costPrice: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Harga Danus</label>
-                    <input 
-                      type="number" 
-                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
-                      value={editForm.priceDanus}
-                      onChange={e => setEditForm({...editForm, priceDanus: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Harga PO</label>
-                    <input 
-                      type="number" 
-                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
-                      value={editForm.pricePO}
-                      onChange={e => setEditForm({...editForm, pricePO: e.target.value})}
-                    />
-                  </div>
-                  <div className="mt-auto pt-4 flex gap-2">
-                    <button 
-                      onClick={() => handleSaveEdit(product.id)}
-                      className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-1"
-                    >
-                      <Check size={16} /> Simpan
-                    </button>
-                    <button 
-                      onClick={() => setEditingId(null)}
-                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 py-2 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-1"
-                    >
-                      <X size={16} /> Batal
-                    </button>
-                  </div>
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-amber-100 text-sky-600 rounded-xl flex items-center justify-center text-2xl">
+                  {product.icon ? product.icon : <Package size={24} />}
                 </div>
-              ) : (
-                <>
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="w-12 h-12 bg-amber-100 text-sky-600 rounded-xl flex items-center justify-center text-2xl">
-                      {product.icon ? product.icon : <Package size={24} />}
-                    </div>
-                  </div>
-                  <h3 className="font-bold text-gray-800 text-lg line-clamp-1">{product.name}</h3>
-                  <div className="mt-2 mb-4 space-y-1">
-                    <p className="text-gray-600 font-medium text-sm">Modal/HPP: {formatRupiah(product.costPrice || 0)}</p>
-                    <p className="text-sky-600 font-bold text-sm">Danus: {formatRupiah(product.priceDanus)}</p>
-                    <p className="text-blue-600 font-bold text-sm">PO: {formatRupiah(product.pricePO)}</p>
-                  </div>
-                  <div className="mt-auto pt-4 border-t border-gray-50 flex gap-2">
-                    <button 
-                      onClick={() => handleEdit(product)}
-                      className="flex-1 flex items-center justify-center gap-2 text-sm font-medium text-sky-600 hover:bg-sky-50 py-2 rounded-lg transition-colors"
-                    >
-                      <Edit2 size={16} /> Edit
-                    </button>
-                    <button 
-                      onClick={() => deleteProduct(product.id)}
-                      className="flex-1 flex items-center justify-center gap-2 text-sm font-medium text-red-600 hover:bg-red-50 py-2 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} /> Hapus
-                    </button>
-                  </div>
-                </>
-              )}
+              </div>
+              <h3 className="font-bold text-gray-800 text-lg line-clamp-1">{product.name}</h3>
+              <div className="mt-2 mb-4 space-y-1">
+                <p className="text-gray-600 font-medium text-sm">Modal/HPP: {formatRupiah(product.costPrice || 0)}</p>
+                <p className="text-sky-600 font-bold text-sm">Danus: {formatRupiah(product.priceDanus)}</p>
+                <p className="text-blue-600 font-bold text-sm">PO: {formatRupiah(product.pricePO)}</p>
+              </div>
+              <div className="mt-auto pt-4 border-t border-gray-50 flex gap-2">
+                <button 
+                  onClick={() => handleEdit(product)}
+                  className="flex-1 flex items-center justify-center gap-2 text-sm font-medium text-sky-600 hover:bg-sky-50 py-2 rounded-lg transition-colors"
+                >
+                  <Edit2 size={16} /> Edit
+                </button>
+                <button 
+                  onClick={() => deleteProduct(product.id)}
+                  className="flex-1 flex items-center justify-center gap-2 text-sm font-medium text-red-600 hover:bg-red-50 py-2 rounded-lg transition-colors"
+                >
+                  <Trash2 size={16} /> Hapus
+                </button>
+              </div>
             </div>
           );
         })}
       </div>
+
+      {editingId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="font-bold text-gray-800 text-lg">Edit Produk</h3>
+              <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex gap-4">
+                <div className="w-20">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ikon</label>
+                  <input 
+                    type="text" 
+                    maxLength={2}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-center focus:ring-2 focus:ring-sky-500 outline-none"
+                    value={editForm.icon}
+                    onChange={e => setEditForm({...editForm, icon: e.target.value})}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
+                  <input 
+                    type="text" 
+                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
+                    value={editForm.name}
+                    onChange={e => setEditForm({...editForm, name: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Modal/HPP</label>
+                <input 
+                  type="number" 
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={editForm.costPrice}
+                  onChange={e => setEditForm({...editForm, costPrice: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga Danus</label>
+                <input 
+                  type="number" 
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={editForm.priceDanus}
+                  onChange={e => setEditForm({...editForm, priceDanus: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga PO</label>
+                <input 
+                  type="number" 
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={editForm.pricePO}
+                  onChange={e => setEditForm({...editForm, pricePO: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
+              <button 
+                onClick={() => setEditingId(null)}
+                className="px-5 py-2.5 rounded-xl font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => handleSaveEdit(editingId)}
+                className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+              >
+                <Check size={18} /> Simpan Perubahan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
