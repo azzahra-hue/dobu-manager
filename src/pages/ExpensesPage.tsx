@@ -58,8 +58,8 @@ export default function ExpensesPage() {
 
       {isAdding && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-sky-100">
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <div className="space-y-1">
+          <form onSubmit={handleSubmit} className="flex flex-col md:flex-row flex-wrap gap-4 items-end">
+            <div className="space-y-1 w-full md:w-36 flex-none">
               <label className="text-sm font-medium text-gray-600">Tanggal</label>
               <input 
                 type="date" 
@@ -69,7 +69,7 @@ export default function ExpensesPage() {
                 onChange={e => setNewExpense({...newExpense, date: e.target.value})}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 w-full md:w-40 flex-none">
               <label className="text-sm font-medium text-gray-600">Jenis Transaksi</label>
               <select
                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
@@ -77,10 +77,10 @@ export default function ExpensesPage() {
                 onChange={e => setNewExpense({...newExpense, type: e.target.value as 'income' | 'expense'})}
               >
                 <option value="expense">Pengeluaran</option>
-                <option value="income">Pemasukan (Sisa Modal/dll)</option>
+                <option value="income">Pemasukan</option>
               </select>
             </div>
-            <div className="space-y-1 md:col-span-2">
+            <div className="space-y-1 flex-1 min-w-[200px]">
               <label className="text-sm font-medium text-gray-600">Keterangan</label>
               <input 
                 type="text" 
@@ -91,7 +91,7 @@ export default function ExpensesPage() {
                 onChange={e => setNewExpense({...newExpense, description: e.target.value})}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 w-full md:w-48 flex-none">
               <label className="text-sm font-medium text-gray-600">Nominal (Rp)</label>
               <input 
                 type="number" 
@@ -102,9 +102,9 @@ export default function ExpensesPage() {
                 onChange={e => setNewExpense({...newExpense, amount: e.target.value})}
               />
             </div>
-            <div className="md:col-span-5 flex justify-end">
-              <button type="submit" className="bg-sky-500 hover:bg-sky-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors">
-                Simpan Transaksi
+            <div className="w-full md:w-auto flex-none">
+              <button type="submit" className="w-full bg-sky-500 hover:bg-sky-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors">
+                Simpan
               </button>
             </div>
           </form>
