@@ -1,0 +1,34 @@
+{
+  "products": {
+    "__security__": "allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.ownerId; allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;",
+    "name": "string",
+    "priceDanus": "number",
+    "pricePO": "number",
+    "ownerId": "string"
+  },
+  "orders": {
+    "__security__": "allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.ownerId; allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;",
+    "batch": "string",
+    "date": "string",
+    "customerName": "string",
+    "productId": "string",
+    "packageType": "string",
+    "qty": "number",
+    "total": "number",
+    "status": "string",
+    "ownerId": "string"
+  },
+  "expenses": {
+    "__security__": "allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.ownerId; allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;",
+    "date": "string",
+    "description": "string",
+    "amount": "number",
+    "ownerId": "string"
+  },
+  "partners": {
+    "__security__": "allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.ownerId; allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;",
+    "name": "string",
+    "percentage": "number",
+    "ownerId": "string"
+  }
+}

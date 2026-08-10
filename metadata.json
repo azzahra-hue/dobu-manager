@@ -1,0 +1,6 @@
+{
+  "name": "Dobu Manager",
+  "description": "Aplikasi pencatatan pesanan, keuangan, dan bagi hasil untuk usaha kecil (kue, roti, dan tiramisu).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
