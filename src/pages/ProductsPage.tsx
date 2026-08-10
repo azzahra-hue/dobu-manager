@@ -7,9 +7,9 @@ import { Product } from '../types';
 export default function ProductsPage() {
   const { products, addProduct, deleteProduct, updateProduct } = useAppContext();
   const [isAdding, setIsAdding] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: '', costPrice: '', priceDanus: '', pricePO: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', icon: '', costPrice: '', priceDanus: '', pricePO: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', costPrice: '', priceDanus: '', pricePO: '' });
+  const [editForm, setEditForm] = useState({ name: '', icon: '', costPrice: '', priceDanus: '', pricePO: '' });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,11 +17,12 @@ export default function ProductsPage() {
     
     addProduct({
       name: newProduct.name,
+      icon: newProduct.icon,
       costPrice: parseFloat(newProduct.costPrice),
       priceDanus: parseFloat(newProduct.priceDanus),
       pricePO: parseFloat(newProduct.pricePO),
     });
-    setNewProduct({ name: '', costPrice: '', priceDanus: '', pricePO: '' });
+    setNewProduct({ name: '', icon: '', costPrice: '', priceDanus: '', pricePO: '' });
     setIsAdding(false);
   };
 
@@ -29,6 +30,7 @@ export default function ProductsPage() {
     setEditingId(product.id);
     setEditForm({
       name: product.name,
+      icon: product.icon || '',
       costPrice: product.costPrice.toString(),
       priceDanus: product.priceDanus.toString(),
       pricePO: product.pricePO.toString()
@@ -39,6 +41,7 @@ export default function ProductsPage() {
     if (!editForm.name || !editForm.costPrice || !editForm.priceDanus || !editForm.pricePO) return;
     await updateProduct(id, {
       name: editForm.name,
+      icon: editForm.icon,
       costPrice: parseFloat(editForm.costPrice),
       priceDanus: parseFloat(editForm.priceDanus),
       pricePO: parseFloat(editForm.pricePO),
@@ -60,8 +63,19 @@ export default function ProductsPage() {
       </div>
 
       {isAdding && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-200 max-w-4xl">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-200 max-w-5xl">
           <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="space-y-1 w-20 flex-shrink-0">
+              <label className="text-sm font-medium text-gray-600">Ikon</label>
+              <input 
+                type="text" 
+                placeholder="🍪"
+                maxLength={2}
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none text-center"
+                value={newProduct.icon}
+                onChange={e => setNewProduct({...newProduct, icon: e.target.value})}
+              />
+            </div>
             <div className="space-y-1 flex-1 w-full">
               <label className="text-sm font-medium text-gray-600">Nama Produk</label>
               <input 
@@ -123,14 +137,26 @@ export default function ProductsPage() {
             <div key={product.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col group relative">
               {isEditing ? (
                 <div className="space-y-3 flex-1 flex flex-col">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Nama Produk</label>
-                    <input 
-                      type="text" 
-                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
-                      value={editForm.name}
-                      onChange={e => setEditForm({...editForm, name: e.target.value})}
-                    />
+                  <div className="flex gap-2">
+                    <div className="w-16">
+                      <label className="text-xs font-medium text-gray-500">Ikon</label>
+                      <input 
+                        type="text" 
+                        maxLength={2}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none text-center"
+                        value={editForm.icon}
+                        onChange={e => setEditForm({...editForm, icon: e.target.value})}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs font-medium text-gray-500">Nama Produk</label>
+                      <input 
+                        type="text" 
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                        value={editForm.name}
+                        onChange={e => setEditForm({...editForm, name: e.target.value})}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-500">Modal/HPP</label>
@@ -177,8 +203,8 @@ export default function ProductsPage() {
               ) : (
                 <>
                   <div className="flex justify-between items-start mb-4">
-                    <div className="w-12 h-12 bg-amber-100 text-sky-600 rounded-xl flex items-center justify-center">
-                      <Package size={24} />
+                    <div className="w-12 h-12 bg-amber-100 text-sky-600 rounded-xl flex items-center justify-center text-2xl">
+                      {product.icon ? product.icon : <Package size={24} />}
                     </div>
                   </div>
                   <h3 className="font-bold text-gray-800 text-lg line-clamp-1">{product.name}</h3>
