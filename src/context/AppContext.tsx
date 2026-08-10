@@ -15,6 +15,7 @@ interface AppContextType {
   partners: Partner[];
   addProduct: (product: Omit<Product, 'id' | 'workspaceId'>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  updateProduct: (id: string, updates: Partial<Omit<Product, 'id' | 'workspaceId'>>) => Promise<void>;
   addOrder: (order: Omit<Order, 'id' | 'workspaceId'>) => Promise<void>;
   updateOrderStatus: (id: string, status: Order['status']) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
@@ -110,6 +111,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const deleteProduct = async (id: string) => {
     await deleteDoc(doc(db, 'products', id));
   };
+  const updateProduct = async (id: string, updates: Partial<Omit<Product, 'id' | 'workspaceId'>>) => {
+    if (!isAuthenticated) return;
+    await updateDoc(doc(db, 'products', id), updates);
+  };
   
   const addOrder = async (order: Omit<Order, 'id' | 'workspaceId'>) => {
     if (!isAuthenticated) return;
@@ -154,7 +159,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{
       isAuthenticated, login, logout, products, orders, expenses, partners,
-      addProduct, deleteProduct,
+      addProduct, deleteProduct, updateProduct,
       addOrder, updateOrderStatus, deleteOrder,
       addExpense, deleteExpense,
       updatePartners, addPartner, deletePartner
