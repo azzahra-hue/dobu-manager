@@ -24,10 +24,11 @@ export default function ProfitSharingPage() {
     return sum + (cost * order.qty);
   }, 0);
 
-  const totalPengeluaran = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalPengeluaran = expenses.filter(e => e.type !== 'income').reduce((sum, expense) => sum + expense.amount, 0);
+  const totalPemasukanTambahan = expenses.filter(e => e.type === 'income').reduce((sum, expense) => sum + expense.amount, 0);
   
   const keuntunganKotor = totalPendapatan - totalModal;
-  const keuntunganBersih = keuntunganKotor - totalPengeluaran;
+  const keuntunganBersih = keuntunganKotor - totalPengeluaran + totalPemasukanTambahan;
 
   const handlePercentageChange = (id: string, newPercentage: number) => {
     const updated = partners.map(p => 
@@ -89,6 +90,12 @@ export default function ProfitSharingPage() {
                 <span>Total Pengeluaran Ekstra</span>
                 <span className="font-semibold">- {formatRupiah(totalPengeluaran)}</span>
               </div>
+              {totalPemasukanTambahan > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Pemasukan Tambahan</span>
+                  <span className="font-semibold">+ {formatRupiah(totalPemasukanTambahan)}</span>
+                </div>
+              )}
             </div>
           </div>
 

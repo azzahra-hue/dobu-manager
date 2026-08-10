@@ -16,9 +16,10 @@ export default function Dashboard() {
     return sum + (cost * order.qty);
   }, 0);
 
-  const totalPengeluaran = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalPengeluaran = expenses.filter(e => e.type !== 'income').reduce((sum, expense) => sum + expense.amount, 0);
+  const totalPemasukanTambahan = expenses.filter(e => e.type === 'income').reduce((sum, expense) => sum + expense.amount, 0);
   const keuntunganKotor = totalPendapatan - totalModal;
-  const keuntunganBersih = keuntunganKotor - totalPengeluaran;
+  const keuntunganBersih = keuntunganKotor - totalPengeluaran + totalPemasukanTambahan;
 
   const chartData = [
     { name: 'Omzet', amount: totalPendapatan, fill: '#f97316' },
