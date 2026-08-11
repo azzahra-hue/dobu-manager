@@ -162,16 +162,43 @@ export default function OrdersPage() {
   }, {} as Record<string, Order[]>);
 
   const handleCopyJarkomCustomer = (customer: {name: string, orders: Order[]}) => {
-    let text = `Halo ${customer.name},\n\nTerima kasih sudah memesan:\n`;
+    let text = `Halo ${customer.name}! Berikut rincian pesananmu:\n\n`;
     customer.orders.forEach(o => {
       const pName = getProductName(o.productId);
-      text += `- ${o.qty}x ${pName} (${o.packageType.toUpperCase()})\n`;
+      text += `• ${o.qty}x ${pName} = ${formatRupiah(o.total)}\n`;
     });
     const total = customer.orders.reduce((sum, o) => sum + o.total, 0);
-    text += `\nTotal yang harus dibayar: ${formatRupiah(total)}\n\nSilakan lakukan pembayaran agar pesanan segera diproses. Terima kasih! 🍪`;
+    text += `\nTotal Tagihan: ${formatRupiah(total)}\n\n`;
+    text += `pembayaran dobu⭐\n`;
+    text += `* *dana*: 082121690950 (irfah) \n`;
+    text += `* *seabank*: 901195619200 (irfah zakiya hamidi)\n`;
+    text += `* *spay*: 082121690950 (irfah) _khusus tf sesama spay_\n`;
+    text += `* *cash*\n\n`;
+    text += `Terimakasih, have a nice day 🍪!`;
     
     navigator.clipboard.writeText(text).then(() => {
       setCopiedId(customer.orders[0].id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
+
+  const handleCopyJarkomBatch = (batchOrders: Order[], productRecap: Record<string, {name: string, qty: number, total: number}>) => {
+    let text = `haii terima kasih telah memesan tiramisu dan menjadi mitra dana usahamu di Dobu!🤍\n\n`;
+    Object.values(productRecap).forEach(recap => {
+      text += `${recap.qty}x ${recap.name} = ${formatRupiah(recap.total)}\n`;
+    });
+    text += `----------------\n`;
+    const totalHarga = batchOrders.reduce((sum, o) => sum + o.total, 0);
+    text += `Total harga pesananmu *${formatRupiah(totalHarga)}*\n\n\n`;
+    text += `pembayaran dobu⭐\n`;
+    text += `* *dana*: 082121690950 (irfah) \n`;
+    text += `* *seabank*: 901195619200 (irfah zakiya hamidi)\n`;
+    text += `* *spay*: 082121690950 (irfah) _khusus tf sesama spay_\n`;
+    text += `* *cash*\n\n`;
+    text += `Terimakasih, have a nice day 🍪!`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(`batch-${batchOrders[0].batch}`);
       setTimeout(() => setCopiedId(null), 2000);
     });
   };
@@ -392,11 +419,12 @@ export default function OrdersPage() {
           // Calculate product recap for this batch
           const productRecap = batchOrders.reduce((acc, order) => {
             if (!acc[order.productId]) {
-              acc[order.productId] = { name: getProductName(order.productId), qty: 0 };
+              acc[order.productId] = { name: getProductName(order.productId), qty: 0, total: 0 };
             }
             acc[order.productId].qty += order.qty;
+            acc[order.productId].total += order.total;
             return acc;
-          }, {} as Record<string, {name: string, qty: number}>);
+          }, {} as Record<string, {name: string, qty: number, total: number}>);
 
           // Group by customer within this batch
           const customersInBatch = batchOrders.reduce((acc, order) => {
@@ -407,6 +435,14 @@ export default function OrdersPage() {
             acc[key].orders.push(order);
             return acc;
           }, {} as Record<string, {name: string, orders: Order[]}>);
+
+          const totalRevenue = batchOrders.reduce((sum, o) => sum + o.total, 0);
+          const totalCost = batchOrders.reduce((sum, o) => {
+            const p = products.find(prod => prod.id === o.productId);
+            return sum + ((p?.costPrice || 0) * o.qty);
+          }, 0);
+          const totalProfit = totalRevenue - totalCost;
+          const profitPerPerson = totalProfit / 2;
 
           return (
             <div key={batch} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
@@ -582,18 +618,47 @@ export default function OrdersPage() {
 
                 {/* Recap Section for the Batch */}
                 <div className="lg:col-span-1 bg-amber-50/30 p-4 rounded-xl border border-amber-200 h-fit">
-                  <h4 className="font-bold text-gray-800 text-sm mb-3">Rekap Varian ({batch})</h4>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-bold text-gray-800 text-sm">Rekap Varian ({batch})</h4>
+                    <button 
+                      onClick={() => handleCopyJarkomBatch(batchOrders, productRecap)}
+                      className={`p-1.5 rounded-lg transition-colors ${copiedId === `batch-${batch}` ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:text-sky-600 hover:bg-sky-50'}`}
+                      title="Copy Rekap"
+                    >
+                      {copiedId === `batch-${batch}` ? <CheckCircle size={16} /> : <Copy size={16} />}
+                    </button>
+                  </div>
                   <ul className="space-y-2">
                     {Object.values(productRecap).map((recapRaw, idx) => {
-                      const recap = recapRaw as {name: string, qty: number};
+                      const recap = recapRaw as {name: string, qty: number, total: number};
                       return (
                       <li key={idx} className="flex justify-between items-center text-sm">
                         <span className="text-gray-600">{recap.name}</span>
-                        <span className="font-bold text-gray-900 bg-white px-2 py-1 rounded-md border border-gray-100">{recap.qty}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 bg-white px-2 py-1 rounded-md border border-gray-100">{recap.qty}</span>
+                        </div>
                       </li>
                       );
                     })}
                   </ul>
+                  <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Total Pendapatan</span>
+                      <span className="font-semibold text-gray-800">{formatRupiah(totalRevenue)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Total Modal</span>
+                      <span className="font-semibold text-gray-800">{formatRupiah(totalCost)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Total Keuntungan</span>
+                      <span className="font-semibold text-green-600">{formatRupiah(totalProfit)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm font-medium pt-2 border-t border-amber-100">
+                      <span className="text-gray-800">Bagi Hasil (per orang)</span>
+                      <span className="font-bold text-sky-600">{formatRupiah(profitPerPerson)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
