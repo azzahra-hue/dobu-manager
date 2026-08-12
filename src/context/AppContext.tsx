@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, Order, Expense, Partner } from '../types';
+import { Product, Order, Expense, Partner, Recipe } from '../types';
 import { db } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
 
@@ -13,6 +13,9 @@ interface AppContextType {
   orders: Order[];
   expenses: Expense[];
   partners: Partner[];
+  recipes: Recipe[];
+  saveRecipe: (recipe: Recipe) => Promise<void>;
+  deleteRecipe: (productId: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'workspaceId'>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   updateProduct: (id: string, updates: Partial<Omit<Product, 'id' | 'workspaceId'>>) => Promise<void>;
@@ -38,6 +41,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
 
   const login = (u: string, p: string) => {
@@ -60,6 +64,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setOrders([]);
       setExpenses([]);
       setPartners([]);
+      setRecipes([]);
       setLoading(false);
       return;
     }
@@ -93,6 +98,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setPartners(loadedPartners);
       }
+    });
+
+    const qRecipes = query(collection(db, 'recipes'), where('workspaceId', '==', WORKSPACE_ID));
+    const unsubRecipes = onSnapshot(qRecipes, (snap) => {
+      setRecipes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Recipe)));
       setLoading(false);
     });
 
@@ -101,8 +111,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       unsubOrders();
       unsubExpenses();
       unsubPartners();
+      unsubRecipes();
     };
   }, [isAuthenticated]);
+
+  const saveRecipe = async (recipe: Recipe) => {
+    if (!isAuthenticated) return;
+    const recipeRef = doc(db, 'recipes', recipe.productId);
+    await setDoc(recipeRef, { ...recipe, id: recipe.productId, workspaceId: WORKSPACE_ID });
+  };
+
+  const deleteRecipe = async (productId: string) => {
+    if (!isAuthenticated) return;
+    await deleteDoc(doc(db, 'recipes', productId));
+  };
 
   const addProduct = async (product: Omit<Product, 'id' | 'workspaceId'>) => {
     if (!isAuthenticated) return;
@@ -162,7 +184,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AppContext.Provider value={{
-      isAuthenticated, login, logout, products, orders, expenses, partners,
+      isAuthenticated, login, logout, products, orders, expenses, partners, recipes,
+      saveRecipe, deleteRecipe,
       addProduct, deleteProduct, updateProduct,
       addOrder, updateOrderStatus, updateOrder, deleteOrder,
       addExpense, deleteExpense,

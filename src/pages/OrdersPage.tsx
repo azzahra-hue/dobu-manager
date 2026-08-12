@@ -288,6 +288,15 @@ export default function OrdersPage() {
     return true;
   });
 
+  interface RecapItem {
+    id: string;
+    name: string;
+    qtyDanus: number;
+    qtyPO: number;
+    totalQty: number;
+    totalRevenue: number;
+  }
+
   const globalProductRecap = filteredRecapOrders.reduce((acc, order) => {
     if (!acc[order.productId]) {
       acc[order.productId] = {
@@ -307,10 +316,12 @@ export default function OrdersPage() {
     acc[order.productId].totalQty += order.qty;
     acc[order.productId].totalRevenue += order.total;
     return acc;
-  }, {} as Record<string, { id: string; name: string; qtyDanus: number; qtyPO: number; totalQty: number; totalRevenue: number }>);
+  }, {} as Record<string, RecapItem>);
 
-  const totalRecapItems = Object.values(globalProductRecap).reduce((sum, r) => sum + r.totalQty, 0);
-  const totalRecapRevenue = Object.values(globalProductRecap).reduce((sum, r) => sum + r.totalRevenue, 0);
+  const recapList: RecapItem[] = Object.values(globalProductRecap);
+
+  const totalRecapItems = recapList.reduce((sum, r) => sum + r.totalQty, 0);
+  const totalRecapRevenue = recapList.reduce((sum, r) => sum + r.totalRevenue, 0);
 
   const handleCopyProductionRecap = () => {
     let text = `📋 REKAP PRODUKSI PESANAN\n`;
@@ -319,7 +330,7 @@ export default function OrdersPage() {
     text += `Status: ${recapStatusFilter === 'active' ? 'Aktif (Menunggu & Selesai)' : recapStatusFilter.toUpperCase()}\n`;
     text += `--------------------------------\n\n`;
 
-    Object.values(globalProductRecap).forEach(recap => {
+    recapList.forEach(recap => {
       if (recapPackageFilter === 'all' && (recap.qtyDanus > 0 && recap.qtyPO > 0)) {
         text += `• ${recap.totalQty}x ${recap.name} (Danus: ${recap.qtyDanus}, PO: ${recap.qtyPO})\n`;
       } else {
@@ -537,7 +548,7 @@ export default function OrdersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 text-sm">
-                  {Object.values(globalProductRecap).map(recap => (
+                  {recapList.map(recap => (
                     <tr key={recap.id} className="hover:bg-amber-50/30 transition-colors">
                       <td className="p-3 font-bold text-gray-800">{recap.name}</td>
                       {recapPackageFilter === 'all' && (

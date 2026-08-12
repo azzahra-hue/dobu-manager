@@ -30,6 +30,21 @@ export interface Expense {
   workspaceId: string;
 }
 
+export interface Ingredient {
+  id: string;
+  name: string;
+  amount: number;
+  unit: string;
+}
+
+export interface Recipe {
+  id?: string;
+  productId: string;
+  basePortion: number;
+  ingredients: Ingredient[];
+  workspaceId?: string;
+}
+
 export interface Partner {
   id: string;
   name: string;

@@ -1,19 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /products/{document=**} {
-      allow read, update, delete: if resource.data.workspaceId == 'admin_bake2026';
-      allow create: if request.resource.data.workspaceId == 'admin_bake2026';
-    }
-    match /orders/{document=**} {
-      allow read, update, delete: if resource.data.workspaceId == 'admin_bake2026';
-      allow create: if request.resource.data.workspaceId == 'admin_bake2026';
-    }
-    match /expenses/{document=**} {
-      allow read, update, delete: if resource.data.workspaceId == 'admin_bake2026';
-      allow create: if request.resource.data.workspaceId == 'admin_bake2026';
-    }
-    match /partners/{document=**} {
+    match /{collection}/{docId} {
       allow read, update, delete: if resource.data.workspaceId == 'admin_bake2026';
       allow create: if request.resource.data.workspaceId == 'admin_bake2026';
     }

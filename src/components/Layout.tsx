@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, ShoppingCart, Wallet, PieChart, Package, LogOut, User, PanelLeftClose, PanelLeftOpen, Menu } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Wallet, PieChart, Package, LogOut, User, PanelLeftClose, PanelLeftOpen, Menu, ChefHat } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
 interface LayoutProps {
@@ -11,6 +11,7 @@ interface LayoutProps {
 const navItems = [
   { id: 'dashboard', label: 'Beranda', icon: LayoutDashboard },
   { id: 'orders', label: 'Pesanan', icon: ShoppingCart },
+  { id: 'kitchen', label: 'Dapur', icon: ChefHat },
   { id: 'finances', label: 'Keuangan', icon: Wallet },
   { id: 'profit-sharing', label: 'Bagi Hasil', icon: PieChart },
   { id: 'products', label: 'Produk', icon: Package },

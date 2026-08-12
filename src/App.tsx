@@ -11,6 +11,7 @@ import OrdersPage from './pages/OrdersPage';
 import ExpensesPage from './pages/ExpensesPage';
 import ProfitSharingPage from './pages/ProfitSharingPage';
 import ProductsPage from './pages/ProductsPage';
+import KitchenPage from './pages/KitchenPage';
 import Login from './pages/Login';
 
 function AppContent() {
@@ -25,6 +26,7 @@ function AppContent() {
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
       {activeTab === 'dashboard' && <Dashboard />}
       {activeTab === 'orders' && <OrdersPage />}
+      {activeTab === 'kitchen' && <KitchenPage />}
       {activeTab === 'finances' && <ExpensesPage />}
       {activeTab === 'profit-sharing' && <ProfitSharingPage />}
       {activeTab === 'products' && <ProductsPage />}
