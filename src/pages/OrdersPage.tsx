@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { formatRupiah, formatDate } from '../utils/format';
-import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload, Edit2, Check, X, ListChecks, Filter } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload, Edit2, Check, X, ListChecks, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import Papa from 'papaparse';
 
 import { Order } from '../types';
@@ -16,6 +16,11 @@ export default function OrdersPage() {
   const [selectedRecapBatches, setSelectedRecapBatches] = useState<string[]>([]);
   const [recapPackageFilter, setRecapPackageFilter] = useState<'all' | 'danus' | 'po'>('all');
   const [recapStatusFilter, setRecapStatusFilter] = useState<'active' | 'pending' | 'completed' | 'all' | 'cancelled'>('active');
+  const [recapProductFilter, setRecapProductFilter] = useState<string[]>([]);
+  const [isProductFilterExpanded, setIsProductFilterExpanded] = useState(false);
+  const [isBatchFilterExpanded, setIsBatchFilterExpanded] = useState(false);
+  const [isPackageFilterExpanded, setIsPackageFilterExpanded] = useState(false);
+  const [isStatusFilterExpanded, setIsStatusFilterExpanded] = useState(false);
   
   const [editingBatch, setEditingBatch] = useState<string | null>(null);
   const [editBatchValue, setEditBatchValue] = useState<string>('');
@@ -189,7 +194,13 @@ export default function OrdersPage() {
 
   const handleCopyJarkomBatch = (batchOrders: Order[], productRecap: Record<string, {name: string, qty: number, total: number}>) => {
     let text = `haii terima kasih telah memesan tiramisu dan menjadi mitra dana usahamu di Dobu!🤍\n\n`;
-    Object.values(productRecap).forEach(recap => {
+    const sortedRecap = Object.entries(productRecap).sort(([idA], [idB]) => {
+      const indexA = products.findIndex(p => p.id === idA);
+      const indexB = products.findIndex(p => p.id === idB);
+      return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+    }).map(e => e[1]);
+    
+    sortedRecap.forEach(recap => {
       text += `${recap.qty}x ${recap.name} = ${formatRupiah(recap.total)}\n`;
     });
     text += `----------------\n`;
@@ -273,6 +284,9 @@ export default function OrdersPage() {
     if (recapPackageFilter !== 'all' && order.packageType !== recapPackageFilter) {
       return false;
     }
+    if (recapProductFilter.length > 0 && !recapProductFilter.includes(order.productId)) {
+      return false;
+    }
     if (recapStatusFilter === 'active' && order.status === 'cancelled') {
       return false;
     }
@@ -318,7 +332,11 @@ export default function OrdersPage() {
     return acc;
   }, {} as Record<string, RecapItem>);
 
-  const recapList: RecapItem[] = Object.values(globalProductRecap);
+  const recapList: RecapItem[] = Object.values(globalProductRecap).sort((a, b) => {
+    const indexA = products.findIndex(p => p.id === (a as RecapItem).id);
+    const indexB = products.findIndex(p => p.id === (b as RecapItem).id);
+    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+  });
 
   const totalRecapItems = recapList.reduce((sum, r) => sum + r.totalQty, 0);
   const totalRecapRevenue = recapList.reduce((sum, r) => sum + r.totalRevenue, 0);
@@ -326,6 +344,12 @@ export default function OrdersPage() {
   const handleCopyProductionRecap = () => {
     let text = `📋 REKAP PRODUKSI PESANAN\n`;
     text += `Batch: ${selectedRecapBatches.length === 0 ? 'Semua Batch' : selectedRecapBatches.join(', ')}\n`;
+    let productName = 'Semua Produk';
+    if (recapProductFilter.length > 0) {
+      const selectedNames = recapProductFilter.map(id => products.find(p => p.id === id)?.name).filter(Boolean);
+      productName = selectedNames.length > 0 ? selectedNames.join(', ') : '-';
+    }
+    text += `Produk: ${productName}\n`;
     text += `Paket: ${recapPackageFilter === 'all' ? 'Semua Paket' : recapPackageFilter.toUpperCase()}\n`;
     text += `Status: ${recapStatusFilter === 'active' ? 'Aktif (Menunggu & Selesai)' : recapStatusFilter.toUpperCase()}\n`;
     text += `--------------------------------\n\n`;
@@ -415,47 +439,126 @@ export default function OrdersPage() {
           </div>
 
           {/* Filter Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-amber-50/20 p-4 rounded-xl border border-amber-200/60">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 bg-amber-50/20 p-4 rounded-xl border border-amber-200/60">
             {/* Batch Filter */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
                 <Filter size={14} /> Filter Batch
               </label>
-              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1">
+              <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setSelectedRecapBatches([])}
-                  className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border ${
-                    selectedRecapBatches.length === 0
-                      ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                  }`}
+                  onClick={() => setIsBatchFilterExpanded(!isBatchFilterExpanded)}
+                  className="w-full px-3 py-1.5 text-left text-sm rounded-xl font-medium transition-colors border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 flex items-center justify-between shadow-sm"
                 >
-                  Semua Batch
+                  <span className="truncate">
+                    {selectedRecapBatches.length === 0 
+                      ? 'Semua Batch' 
+                      : selectedRecapBatches.length === 1 
+                        ? selectedRecapBatches[0]
+                        : `${selectedRecapBatches.length} Batch Dipilih`}
+                  </span>
+                  {isBatchFilterExpanded ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0 ml-2" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0 ml-2" />}
                 </button>
-                {uniqueBatches.map(batch => {
-                  const isSelected = selectedRecapBatches.includes(batch);
-                  return (
-                    <button
-                      key={batch}
-                      type="button"
-                      onClick={() => {
-                        if (isSelected) {
-                          setSelectedRecapBatches(selectedRecapBatches.filter(b => b !== batch));
-                        } else {
-                          setSelectedRecapBatches([...selectedRecapBatches, batch]);
-                        }
-                      }}
-                      className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border ${
-                        isSelected
-                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                      }`}
-                    >
-                      {batch}
-                    </button>
-                  );
-                })}
+                
+                {isBatchFilterExpanded && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setIsBatchFilterExpanded(false)}
+                    />
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto p-2 flex flex-col gap-1">
+                      <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-amber-50 rounded-lg cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedRecapBatches.length === 0}
+                          onChange={() => setSelectedRecapBatches([])}
+                          className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Pilih Semua</span>
+                      </label>
+                      <div className="h-px bg-gray-100 my-1"></div>
+                      {uniqueBatches.map(batch => (
+                        <label key={batch} className="flex items-center gap-2 px-2 py-1.5 hover:bg-amber-50 rounded-lg cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedRecapBatches.includes(batch)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedRecapBatches([...selectedRecapBatches, batch]);
+                              } else {
+                                setSelectedRecapBatches(selectedRecapBatches.filter(b => b !== batch));
+                              }
+                            }}
+                            className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500"
+                          />
+                          <span className="text-sm text-gray-700">{batch}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Product Filter */}
+            <div className="space-y-2 relative">
+              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                <Filter size={14} /> Filter Produk
+              </label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsProductFilterExpanded(!isProductFilterExpanded)}
+                  className="w-full px-3 py-1.5 text-left text-sm rounded-xl font-medium transition-colors border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 flex items-center justify-between shadow-sm"
+                >
+                  <span className="truncate">
+                    {recapProductFilter.length === 0 
+                      ? 'Semua Produk' 
+                      : recapProductFilter.length === 1 
+                        ? products.find(p => p.id === recapProductFilter[0])?.name || '1 Produk'
+                        : `${recapProductFilter.length} Produk Dipilih`}
+                  </span>
+                  {isProductFilterExpanded ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0 ml-2" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0 ml-2" />}
+                </button>
+                
+                {isProductFilterExpanded && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setIsProductFilterExpanded(false)}
+                    />
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto p-2 flex flex-col gap-1">
+                      <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-amber-50 rounded-lg cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={recapProductFilter.length === 0}
+                          onChange={() => setRecapProductFilter([])}
+                          className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Pilih Semua</span>
+                      </label>
+                      <div className="h-px bg-gray-100 my-1"></div>
+                      {products.map(product => (
+                        <label key={product.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-amber-50 rounded-lg cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={recapProductFilter.includes(product.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setRecapProductFilter([...recapProductFilter, product.id]);
+                              } else {
+                                setRecapProductFilter(recapProductFilter.filter(id => id !== product.id));
+                              }
+                            }}
+                            className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500"
+                          />
+                          <span className="text-sm text-gray-700">{product.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -464,25 +567,47 @@ export default function OrdersPage() {
               <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
                 <Filter size={14} /> Filter Jenis Paket
               </label>
-              <div className="flex gap-2">
-                {[
-                  { id: 'all', label: 'Semua' },
-                  { id: 'danus', label: 'Danus' },
-                  { id: 'po', label: 'PO' },
-                ].map(type => (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => setRecapPackageFilter(type.id as any)}
-                    className={`flex-1 py-1.5 px-3 text-xs rounded-lg font-medium transition-colors border text-center ${
-                      recapPackageFilter === type.id
-                        ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsPackageFilterExpanded(!isPackageFilterExpanded)}
+                  className="w-full px-3 py-1.5 text-left text-sm rounded-xl font-medium transition-colors border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 flex items-center justify-between shadow-sm"
+                >
+                  <span className="truncate">
+                    {recapPackageFilter === 'all' ? 'Semua Paket' : recapPackageFilter === 'danus' ? 'Danus' : 'PO'}
+                  </span>
+                  {isPackageFilterExpanded ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0 ml-2" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0 ml-2" />}
+                </button>
+                
+                {isPackageFilterExpanded && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setIsPackageFilterExpanded(false)}
+                    />
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto p-2 flex flex-col gap-1">
+                      {[
+                        { id: 'all', label: 'Semua Paket' },
+                        { id: 'danus', label: 'Danus' },
+                        { id: 'po', label: 'PO' },
+                      ].map(type => (
+                        <label key={type.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-amber-50 rounded-lg cursor-pointer">
+                          <input
+                            type="radio"
+                            name="packageFilter"
+                            checked={recapPackageFilter === type.id}
+                            onChange={() => {
+                              setRecapPackageFilter(type.id as any);
+                              setIsPackageFilterExpanded(false);
+                            }}
+                            className="w-4 h-4 text-amber-500 rounded-full border-gray-300 focus:ring-amber-500"
+                          />
+                          <span className="text-sm text-gray-700">{type.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -491,26 +616,49 @@ export default function OrdersPage() {
               <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
                 <Filter size={14} /> Filter Status Pesanan
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'active', label: 'Aktif (Proses & Selesai)' },
-                  { id: 'pending', label: 'Menunggu' },
-                  { id: 'completed', label: 'Selesai' },
-                  { id: 'all', label: 'Semua Status' },
-                ].map(st => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => setRecapStatusFilter(st.id as any)}
-                    className={`py-1.5 px-2 text-xs rounded-lg font-medium transition-colors border text-center ${
-                      recapStatusFilter === st.id
-                        ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsStatusFilterExpanded(!isStatusFilterExpanded)}
+                  className="w-full px-3 py-1.5 text-left text-sm rounded-xl font-medium transition-colors border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 flex items-center justify-between shadow-sm"
+                >
+                  <span className="truncate">
+                    {recapStatusFilter === 'active' ? 'Aktif (Proses & Selesai)' : recapStatusFilter === 'pending' ? 'Menunggu' : recapStatusFilter === 'completed' ? 'Selesai' : recapStatusFilter === 'cancelled' ? 'Dibatalkan' : 'Semua Status'}
+                  </span>
+                  {isStatusFilterExpanded ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0 ml-2" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0 ml-2" />}
+                </button>
+                
+                {isStatusFilterExpanded && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setIsStatusFilterExpanded(false)}
+                    />
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto p-2 flex flex-col gap-1">
+                      {[
+                        { id: 'active', label: 'Aktif (Proses & Selesai)' },
+                        { id: 'pending', label: 'Menunggu' },
+                        { id: 'completed', label: 'Selesai' },
+                        { id: 'all', label: 'Semua Status' },
+                        { id: 'cancelled', label: 'Dibatalkan' },
+                      ].map(st => (
+                        <label key={st.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-amber-50 rounded-lg cursor-pointer">
+                          <input
+                            type="radio"
+                            name="statusFilter"
+                            checked={recapStatusFilter === st.id}
+                            onChange={() => {
+                              setRecapStatusFilter(st.id as any);
+                              setIsStatusFilterExpanded(false);
+                            }}
+                            className="w-4 h-4 text-amber-500 rounded-full border-gray-300 focus:ring-amber-500"
+                          />
+                          <span className="text-sm text-gray-700">{st.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -924,8 +1072,12 @@ export default function OrdersPage() {
                     </button>
                   </div>
                   <ul className="space-y-2">
-                    {Object.values(productRecap).map((recapRaw, idx) => {
-                      const recap = recapRaw as {name: string, qty: number, total: number};
+                    {Object.entries(productRecap).sort(([idA], [idB]) => {
+                      const indexA = products.findIndex(p => p.id === idA);
+                      const indexB = products.findIndex(p => p.id === idB);
+                      return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                    }).map((e, idx) => {
+                      const recap = e[1];
                       return (
                       <li key={idx} className="flex justify-between items-center text-sm">
                         <span className="text-gray-600">{recap.name}</span>

@@ -73,7 +73,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     const qProducts = query(collection(db, 'products'), where('workspaceId', '==', WORKSPACE_ID));
     const unsubProducts = onSnapshot(qProducts, (snap) => {
-      setProducts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+      const loadedProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      
+      const getSortWeight = (name: string) => {
+        const lower = name.toLowerCase();
+        if (lower.includes('cookie')) return 1;
+        if (/(?:\bs\b|\(s\)|ukuran s)/i.test(lower)) return 2;
+        if (/(?:\bm\b|\(m\)|ukuran m)/i.test(lower)) return 3;
+        return 4;
+      };
+
+      loadedProducts.sort((a, b) => {
+        const weightA = getSortWeight(a.name);
+        const weightB = getSortWeight(b.name);
+        if (weightA !== weightB) return weightA - weightB;
+        return a.name.localeCompare(b.name);
+      });
+
+      setProducts(loadedProducts);
     });
 
     const qOrders = query(collection(db, 'orders'), where('workspaceId', '==', WORKSPACE_ID));
