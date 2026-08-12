@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { formatRupiah, formatDate } from '../utils/format';
-import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload, Edit2, Check, X } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload, Edit2, Check, X, ListChecks, Filter } from 'lucide-react';
 import Papa from 'papaparse';
 
 import { Order } from '../types';
@@ -11,6 +11,11 @@ export default function OrdersPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [showGlobalRecap, setShowGlobalRecap] = useState(false);
+  const [selectedRecapBatches, setSelectedRecapBatches] = useState<string[]>([]);
+  const [recapPackageFilter, setRecapPackageFilter] = useState<'all' | 'danus' | 'po'>('all');
+  const [recapStatusFilter, setRecapStatusFilter] = useState<'active' | 'pending' | 'completed' | 'all' | 'cancelled'>('active');
   
   const [editingBatch, setEditingBatch] = useState<string | null>(null);
   const [editBatchValue, setEditBatchValue] = useState<string>('');
@@ -260,11 +265,94 @@ export default function OrdersPage() {
 
   const uniqueBatches = Array.from(new Set(orders.map(o => o.batch)));
 
+  // Calculate filtered orders for Global Production Recap
+  const filteredRecapOrders = orders.filter(order => {
+    if (selectedRecapBatches.length > 0 && !selectedRecapBatches.includes(order.batch)) {
+      return false;
+    }
+    if (recapPackageFilter !== 'all' && order.packageType !== recapPackageFilter) {
+      return false;
+    }
+    if (recapStatusFilter === 'active' && order.status === 'cancelled') {
+      return false;
+    }
+    if (recapStatusFilter === 'pending' && order.status !== 'pending') {
+      return false;
+    }
+    if (recapStatusFilter === 'completed' && order.status !== 'completed') {
+      return false;
+    }
+    if (recapStatusFilter === 'cancelled' && order.status !== 'cancelled') {
+      return false;
+    }
+    return true;
+  });
+
+  const globalProductRecap = filteredRecapOrders.reduce((acc, order) => {
+    if (!acc[order.productId]) {
+      acc[order.productId] = {
+        id: order.productId,
+        name: getProductName(order.productId),
+        qtyDanus: 0,
+        qtyPO: 0,
+        totalQty: 0,
+        totalRevenue: 0
+      };
+    }
+    if (order.packageType === 'danus') {
+      acc[order.productId].qtyDanus += order.qty;
+    } else {
+      acc[order.productId].qtyPO += order.qty;
+    }
+    acc[order.productId].totalQty += order.qty;
+    acc[order.productId].totalRevenue += order.total;
+    return acc;
+  }, {} as Record<string, { id: string; name: string; qtyDanus: number; qtyPO: number; totalQty: number; totalRevenue: number }>);
+
+  const totalRecapItems = Object.values(globalProductRecap).reduce((sum, r) => sum + r.totalQty, 0);
+  const totalRecapRevenue = Object.values(globalProductRecap).reduce((sum, r) => sum + r.totalRevenue, 0);
+
+  const handleCopyProductionRecap = () => {
+    let text = `📋 REKAP PRODUKSI PESANAN\n`;
+    text += `Batch: ${selectedRecapBatches.length === 0 ? 'Semua Batch' : selectedRecapBatches.join(', ')}\n`;
+    text += `Paket: ${recapPackageFilter === 'all' ? 'Semua Paket' : recapPackageFilter.toUpperCase()}\n`;
+    text += `Status: ${recapStatusFilter === 'active' ? 'Aktif (Menunggu & Selesai)' : recapStatusFilter.toUpperCase()}\n`;
+    text += `--------------------------------\n\n`;
+
+    Object.values(globalProductRecap).forEach(recap => {
+      if (recapPackageFilter === 'all' && (recap.qtyDanus > 0 && recap.qtyPO > 0)) {
+        text += `• ${recap.totalQty}x ${recap.name} (Danus: ${recap.qtyDanus}, PO: ${recap.qtyPO})\n`;
+      } else {
+        text += `• ${recap.totalQty}x ${recap.name}\n`;
+      }
+    });
+
+    text += `\n--------------------------------\n`;
+    text += `TOTAL PRODUKSI: ${totalRecapItems} pcs / item\n`;
+    text += `Total Nilai Pesanan: ${formatRupiah(totalRecapRevenue)}\n`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId('global-production-recap');
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Kelola Pesanan</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button 
+            onClick={() => setShowGlobalRecap(!showGlobalRecap)}
+            className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium shadow-sm ${
+              showGlobalRecap 
+                ? 'bg-amber-600 text-white' 
+                : 'bg-amber-500 hover:bg-amber-600 text-white'
+            }`}
+          >
+            <ListChecks size={20} />
+            {showGlobalRecap ? 'Tutup Rekap' : 'Rekap Produksi'}
+          </button>
           <input 
             type="file" 
             accept=".csv" 
@@ -288,6 +376,202 @@ export default function OrdersPage() {
           </button>
         </div>
       </div>
+
+      {showGlobalRecap && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-300 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+            <div>
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <ListChecks className="text-amber-500" size={24} />
+                Rekap Produksi & Total Varian
+              </h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Pilih filter batch, jenis paket, atau status pesanan untuk mengetahui total porsi yang harus dibuat.
+              </p>
+            </div>
+
+            <button
+              onClick={handleCopyProductionRecap}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm ${
+                copiedId === 'global-production-recap'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
+              }`}
+            >
+              {copiedId === 'global-production-recap' ? <CheckCircle size={18} /> : <Copy size={18} />}
+              {copiedId === 'global-production-recap' ? 'Disalin!' : 'Copy Ringkasan Produksi'}
+            </button>
+          </div>
+
+          {/* Filter Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-amber-50/20 p-4 rounded-xl border border-amber-200/60">
+            {/* Batch Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                <Filter size={14} /> Filter Batch
+              </label>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRecapBatches([])}
+                  className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border ${
+                    selectedRecapBatches.length === 0
+                      ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  Semua Batch
+                </button>
+                {uniqueBatches.map(batch => {
+                  const isSelected = selectedRecapBatches.includes(batch);
+                  return (
+                    <button
+                      key={batch}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedRecapBatches(selectedRecapBatches.filter(b => b !== batch));
+                        } else {
+                          setSelectedRecapBatches([...selectedRecapBatches, batch]);
+                        }
+                      }}
+                      className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border ${
+                        isSelected
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      {batch}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Package Type Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                <Filter size={14} /> Filter Jenis Paket
+              </label>
+              <div className="flex gap-2">
+                {[
+                  { id: 'all', label: 'Semua' },
+                  { id: 'danus', label: 'Danus' },
+                  { id: 'po', label: 'PO' },
+                ].map(type => (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={() => setRecapPackageFilter(type.id as any)}
+                    className={`flex-1 py-1.5 px-3 text-xs rounded-lg font-medium transition-colors border text-center ${
+                      recapPackageFilter === type.id
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                <Filter size={14} /> Filter Status Pesanan
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'active', label: 'Aktif (Proses & Selesai)' },
+                  { id: 'pending', label: 'Menunggu' },
+                  { id: 'completed', label: 'Selesai' },
+                  { id: 'all', label: 'Semua Status' },
+                ].map(st => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setRecapStatusFilter(st.id as any)}
+                    className={`py-1.5 px-2 text-xs rounded-lg font-medium transition-colors border text-center ${
+                      recapStatusFilter === st.id
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Metrics Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-amber-50/80 p-4 rounded-xl border border-amber-200">
+              <span className="text-xs text-amber-800 font-bold uppercase tracking-wider">Total Item Harus Dibuat</span>
+              <div className="text-2xl font-black text-amber-900 mt-1">{totalRecapItems} pcs</div>
+            </div>
+            <div className="bg-sky-50/80 p-4 rounded-xl border border-sky-200">
+              <span className="text-xs text-sky-800 font-bold uppercase tracking-wider">Jumlah Varian</span>
+              <div className="text-2xl font-black text-sky-900 mt-1">{Object.keys(globalProductRecap).length} Varian</div>
+            </div>
+            <div className="bg-emerald-50/80 p-4 rounded-xl border border-emerald-200">
+              <span className="text-xs text-emerald-800 font-bold uppercase tracking-wider">Total Nilai Pesanan</span>
+              <div className="text-2xl font-black text-emerald-900 mt-1">{formatRupiah(totalRecapRevenue)}</div>
+            </div>
+          </div>
+
+          {/* Product Table */}
+          {Object.keys(globalProductRecap).length === 0 ? (
+            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              Tidak ada pesanan yang sesuai dengan filter di atas.
+            </div>
+          ) : (
+            <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-700 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
+                    <th className="p-3">Nama Varian Produk</th>
+                    {recapPackageFilter === 'all' && <th className="p-3 text-center">Rincian Paket (Danus / PO)</th>}
+                    <th className="p-3 text-right">Total Jumlah Dibuat</th>
+                    <th className="p-3 text-right">Total Nilai</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 text-sm">
+                  {Object.values(globalProductRecap).map(recap => (
+                    <tr key={recap.id} className="hover:bg-amber-50/30 transition-colors">
+                      <td className="p-3 font-bold text-gray-800">{recap.name}</td>
+                      {recapPackageFilter === 'all' && (
+                        <td className="p-3 text-center">
+                          <div className="inline-flex gap-2">
+                            {recap.qtyDanus > 0 && (
+                              <span className="bg-sky-100 text-sky-800 text-xs px-2 py-0.5 rounded-full font-semibold">
+                                Danus: {recap.qtyDanus}
+                              </span>
+                            )}
+                            {recap.qtyPO > 0 && (
+                              <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-semibold">
+                                PO: {recap.qtyPO}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                      <td className="p-3 text-right font-black text-amber-700 text-base">
+                        <span className="bg-amber-100 text-amber-900 px-3 py-1 rounded-lg border border-amber-200 shadow-xs">
+                          {recap.totalQty} pcs
+                        </span>
+                      </td>
+                      <td className="p-3 text-right font-bold text-gray-900">
+                        {formatRupiah(recap.totalRevenue)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {isAdding && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-200">
