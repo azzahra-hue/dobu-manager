@@ -46,15 +46,18 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-amber-100">
+        <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-amber-100 flex flex-col justify-center">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-amber-100 text-amber-600 rounded-xl flex-shrink-0">
               <ShoppingBag size={24} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 font-medium truncate">Total Modal</p>
-              <p className="text-xl lg:text-2xl font-bold text-gray-900 truncate" title={formatRupiah(totalModal)}>{formatRupiah(totalModal)}</p>
+              <p className="text-sm text-gray-500 font-medium truncate">Sisa Modal Saat Ini</p>
+              <p className="text-xl lg:text-2xl font-bold text-gray-900 truncate" title={formatRupiah((totalPemasukanTambahan + totalModal) - totalPengeluaran)}>{formatRupiah((totalPemasukanTambahan + totalModal) - totalPengeluaran)}</p>
             </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-amber-50">
+            <p className="text-xs text-amber-700 font-medium">Modal Penjualan: <span className="font-bold">{formatRupiah(totalModal)}</span></p>
           </div>
         </div>
 
