@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { formatRupiah, formatDate } from '../utils/format';
-import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload, Edit2, Check, X, ListChecks, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload, Edit2, Check, X, ListChecks, Filter, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import Papa from 'papaparse';
 
 import { Order } from '../types';
@@ -21,6 +21,9 @@ export default function OrdersPage() {
   const [isBatchFilterExpanded, setIsBatchFilterExpanded] = useState(false);
   const [isPackageFilterExpanded, setIsPackageFilterExpanded] = useState(false);
   const [isStatusFilterExpanded, setIsStatusFilterExpanded] = useState(false);
+  const [collapsedBatches, setCollapsedBatches] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   const [editingBatch, setEditingBatch] = useState<string | null>(null);
   const [editBatchValue, setEditBatchValue] = useState<string>('');
@@ -167,8 +170,14 @@ export default function OrdersPage() {
 
   const getProductName = (id: string) => products.find(p => p.id === id)?.name || 'Produk dihapus';
 
+  const dateFilteredOrders = orders.filter(o => {
+    if (startDate && o.date < startDate) return false;
+    if (endDate && o.date > endDate) return false;
+    return true;
+  });
+
   // Group orders by batch
-  const groupedOrders = orders.reduce((acc, order) => {
+  const groupedOrders = dateFilteredOrders.reduce((acc, order) => {
     if (!acc[order.batch]) {
       acc[order.batch] = [];
     }
@@ -279,10 +288,10 @@ export default function OrdersPage() {
     });
   };
 
-  const uniqueBatches = Array.from(new Set(orders.map(o => o.batch)));
+  const uniqueBatches = Array.from(new Set(dateFilteredOrders.map(o => o.batch)));
 
   // Calculate filtered orders for Global Production Recap
-  const filteredRecapOrders = orders.filter(order => {
+  const filteredRecapOrders = dateFilteredOrders.filter(order => {
     if (selectedRecapBatches.length > 0 && !selectedRecapBatches.includes(order.batch)) {
       return false;
     }
@@ -379,8 +388,40 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-gray-800">Kelola Pesanan</h2>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <h2 className="text-2xl font-bold text-gray-800">Kelola Pesanan</h2>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="px-3 py-2 text-sm font-medium text-sky-600 bg-sky-50 hover:bg-sky-100 rounded-xl transition-colors"
+              >
+                Semua Waktu
+              </button>
+            )}
+            <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-200">
+              <Calendar size={18} className="text-gray-400 ml-2" />
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="text-sm border-none focus:ring-0 outline-none text-gray-600 bg-transparent"
+              />
+              <span className="text-gray-400">-</span>
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="text-sm border-none focus:ring-0 outline-none text-gray-600 bg-transparent"
+              />
+            </div>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2">
           <button 
             onClick={() => setShowGlobalRecap(!showGlobalRecap)}
@@ -905,6 +946,8 @@ export default function OrdersPage() {
           }, 0);
           const totalProfit = totalRevenue - totalCost;
           const profitPerPerson = totalProfit / 2;
+          
+          const isCollapsed = collapsedBatches.includes(batch);
 
           return (
             <div key={batch} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
@@ -951,12 +994,20 @@ export default function OrdersPage() {
                   >
                     <Plus size={16} /> Tambah Pemesan
                   </button>
+                  <button
+                    onClick={() => setCollapsedBatches(prev => prev.includes(batch) ? prev.filter(b => b !== batch) : [...prev, batch])}
+                    className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-full transition-colors border border-transparent hover:border-gray-200"
+                    title={isCollapsed ? "Tampilkan semua pesanan" : "Sembunyikan daftar pesanan"}
+                  >
+                    {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                  </button>
                 </div>
               </div>
               
-              <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div className="lg:col-span-3 overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+              <div className={`p-4 ${isCollapsed ? 'block' : 'grid grid-cols-1 lg:grid-cols-4 gap-6'}`}>
+                {!isCollapsed && (
+                  <div className="lg:col-span-3 overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100">
                         <th className="p-3 font-semibold text-gray-600 text-sm">Pemesan</th>
@@ -1093,10 +1144,11 @@ export default function OrdersPage() {
                       })}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                )}
 
                 {/* Recap Section for the Batch */}
-                <div className="lg:col-span-1 bg-amber-50/30 p-4 rounded-xl border border-amber-200 h-fit">
+                <div className={`${isCollapsed ? 'max-w-xl mx-auto w-full' : 'lg:col-span-1'} bg-amber-50/30 p-4 rounded-xl border border-amber-200 h-fit`}>
                   <div className="flex justify-between items-center mb-3">
                     <h4 className="font-bold text-gray-800 text-sm">Rekap Varian ({batch})</h4>
                     <button 
