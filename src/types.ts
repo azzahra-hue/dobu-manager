@@ -18,6 +18,7 @@ export interface Order {
   qty: number;
   total: number;
   status: 'pending' | 'completed' | 'cancelled';
+  paymentMethod?: string;
   workspaceId: string;
 }
 

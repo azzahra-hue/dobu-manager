@@ -34,6 +34,7 @@ export default function OrdersPage() {
     batch: string;
     customerName: string;
     date: string;
+    paymentMethod?: string;
     items: {
       id: string;
       productId: string;
@@ -70,6 +71,7 @@ export default function OrdersPage() {
           packageType: item.packageType,
           qty: item.qty,
           date: editingCustomerFull.date,
+          paymentMethod: editingCustomerFull.paymentMethod,
           total,
           status: item.status
         });
@@ -81,6 +83,7 @@ export default function OrdersPage() {
           packageType: item.packageType,
           qty: item.qty,
           date: editingCustomerFull.date,
+          paymentMethod: editingCustomerFull.paymentMethod,
           total
         });
       }
@@ -112,7 +115,8 @@ export default function OrdersPage() {
   const [newOrder, setNewOrder] = useState({
     batch: '',
     customerName: '',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'cash'
   });
   
   const [orderItems, setOrderItems] = useState([
@@ -148,6 +152,7 @@ export default function OrdersPage() {
         packageType: item.packageType,
         qty: item.qty,
         date: newOrder.date,
+        paymentMethod: newOrder.paymentMethod,
         total: price * item.qty,
         status: 'pending'
       });
@@ -736,7 +741,7 @@ export default function OrdersPage() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-200">
           <h3 className="text-lg font-bold mb-4 text-gray-800">Tambah Pesanan (Simpan & Tambah Lagi)</h3>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-600">Batch (Misal: Batch 1)</label>
                 <input 
@@ -773,6 +778,20 @@ export default function OrdersPage() {
                   value={newOrder.customerName}
                   onChange={e => setNewOrder({...newOrder, customerName: e.target.value})}
                 />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-600">Metode Bayar</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 outline-none bg-white"
+                  value={newOrder.paymentMethod}
+                  onChange={e => setNewOrder({...newOrder, paymentMethod: e.target.value})}
+                >
+                  <option value="cash">Cash</option>
+                  <option value="dana">DANA</option>
+                  <option value="seabank">SeaBank</option>
+                  <option value="spay">ShopeePay</option>
+                  <option value="lainnya">Lainnya</option>
+                </select>
               </div>
             </div>
 
@@ -944,6 +963,7 @@ export default function OrdersPage() {
                         <th className="p-3 font-semibold text-gray-600 text-sm">Detail Pesanan</th>
                         <th className="p-3 font-semibold text-gray-600 text-sm">Total Tagihan</th>
                         <th className="p-3 font-semibold text-gray-600 text-sm">Status</th>
+                        <th className="p-3 font-semibold text-gray-600 text-sm">Metode Bayar</th>
                         <th className="p-3 font-semibold text-gray-600 text-sm text-right">Aksi</th>
                       </tr>
                     </thead>
@@ -1010,6 +1030,21 @@ export default function OrdersPage() {
                                 <option value="cancelled">Batal</option>
                               </select>
                             </td>
+                            <td className="p-3 align-top pt-4">
+                              <select
+                                value={customer.orders[0]?.paymentMethod || 'cash'}
+                                onChange={(e) => {
+                                  customer.orders.forEach(o => updateOrder(o.id, { paymentMethod: e.target.value }));
+                                }}
+                                className="text-xs px-2 py-1.5 rounded-lg font-medium border border-gray-200 bg-white text-gray-700 outline-none cursor-pointer focus:ring-2 focus:ring-sky-500"
+                              >
+                                <option value="cash">Cash</option>
+                                <option value="dana">DANA</option>
+                                <option value="seabank">SeaBank</option>
+                                <option value="spay">ShopeePay</option>
+                                <option value="lainnya">Lainnya</option>
+                              </select>
+                            </td>
                             <td className="p-3 text-right flex justify-end gap-1 align-top pt-4">
                               <button 
                                 onClick={() => handleCopyJarkomCustomer(customer)}
@@ -1026,6 +1061,7 @@ export default function OrdersPage() {
                                     batch: batch,
                                     customerName: customer.name,
                                     date: customer.orders[0]?.date || new Date().toISOString().split('T')[0],
+                                    paymentMethod: customer.orders[0]?.paymentMethod || 'cash',
                                     items: customer.orders.map(o => ({
                                       id: o.id,
                                       productId: o.productId,
@@ -1123,7 +1159,7 @@ export default function OrdersPage() {
               </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-600">Batch</label>
                 <input 
@@ -1150,6 +1186,20 @@ export default function OrdersPage() {
                   value={editingCustomerFull.customerName}
                   onChange={e => setEditingCustomerFull({...editingCustomerFull, customerName: e.target.value})}
                 />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-600">Metode Bayar</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-sky-500 bg-white"
+                  value={editingCustomerFull.paymentMethod || 'cash'}
+                  onChange={e => setEditingCustomerFull({...editingCustomerFull, paymentMethod: e.target.value})}
+                >
+                  <option value="cash">Cash</option>
+                  <option value="dana">DANA</option>
+                  <option value="seabank">SeaBank</option>
+                  <option value="spay">ShopeePay</option>
+                  <option value="lainnya">Lainnya</option>
+                </select>
               </div>
             </div>
 
