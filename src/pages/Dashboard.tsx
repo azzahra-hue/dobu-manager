@@ -34,51 +34,51 @@ export default function Dashboard() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Ringkasan Usaha</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-200">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-amber-200">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-sky-100 text-sky-600 rounded-xl">
+            <div className="p-3 bg-sky-100 text-sky-600 rounded-xl flex-shrink-0">
               <TrendingUp size={24} />
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Total Omzet</p>
-              <p className="text-2xl font-bold text-gray-900">{formatRupiah(totalPendapatan)}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-gray-500 font-medium truncate">Total Omzet</p>
+              <p className="text-xl lg:text-2xl font-bold text-gray-900 truncate" title={formatRupiah(totalPendapatan)}>{formatRupiah(totalPendapatan)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-100">
+        <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-amber-100">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-100 text-amber-600 rounded-xl">
+            <div className="p-3 bg-amber-100 text-amber-600 rounded-xl flex-shrink-0">
               <ShoppingBag size={24} />
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Total Modal</p>
-              <p className="text-2xl font-bold text-gray-900">{formatRupiah(totalModal)}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-gray-500 font-medium truncate">Total Modal</p>
+              <p className="text-xl lg:text-2xl font-bold text-gray-900 truncate" title={formatRupiah(totalModal)}>{formatRupiah(totalModal)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+        <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-red-100">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-100 text-red-600 rounded-xl">
+            <div className="p-3 bg-red-100 text-red-600 rounded-xl flex-shrink-0">
               <TrendingDown size={24} />
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Pengeluaran Lain</p>
-              <p className="text-2xl font-bold text-gray-900">{formatRupiah(totalPengeluaran)}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-gray-500 font-medium truncate">Pengeluaran Lain</p>
+              <p className="text-xl lg:text-2xl font-bold text-gray-900 truncate" title={formatRupiah(totalPengeluaran)}>{formatRupiah(totalPengeluaran)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-green-100">
+        <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-green-100">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-100 text-green-600 rounded-xl">
+            <div className="p-3 bg-green-100 text-green-600 rounded-xl flex-shrink-0">
               <DollarSign size={24} />
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Keuntungan Bersih</p>
-              <p className={`text-2xl font-bold ${keuntunganBersih >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-gray-500 font-medium truncate">Keuntungan Bersih</p>
+              <p className={`text-xl lg:text-2xl font-bold truncate ${keuntunganBersih >= 0 ? 'text-green-600' : 'text-red-600'}`} title={formatRupiah(keuntunganBersih)}>
                 {formatRupiah(keuntunganBersih)}
               </p>
             </div>
