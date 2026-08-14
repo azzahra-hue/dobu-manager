@@ -18,14 +18,13 @@ export default function Dashboard() {
 
   const totalPengeluaran = expenses.filter(e => e.type !== 'income').reduce((sum, expense) => sum + expense.amount, 0);
   const totalPemasukanTambahan = expenses.filter(e => e.type === 'income').reduce((sum, expense) => sum + expense.amount, 0);
-  const keuntunganKotor = totalPendapatan - totalModal;
-  const keuntunganBersih = keuntunganKotor - totalPengeluaran + totalPemasukanTambahan;
+  const keuntungan = totalPendapatan - totalModal;
 
   const chartData = [
     { name: 'Omzet', amount: totalPendapatan, fill: '#f97316' },
     { name: 'Modal', amount: totalModal, fill: '#f59e0b' },
     { name: 'Pengeluaran', amount: totalPengeluaran, fill: '#ef4444' },
-    { name: 'Keuntungan', amount: keuntunganBersih > 0 ? keuntunganBersih : 0, fill: '#22c55e' }
+    { name: 'Keuntungan', amount: keuntungan > 0 ? keuntungan : 0, fill: '#22c55e' }
   ];
 
   const recentOrders = orders.slice(0, 5);
@@ -65,7 +64,7 @@ export default function Dashboard() {
               <TrendingDown size={24} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 font-medium truncate">Pengeluaran Lain</p>
+              <p className="text-sm text-gray-500 font-medium truncate">Belanja / Pengeluaran</p>
               <p className="text-xl lg:text-2xl font-bold text-gray-900 truncate" title={formatRupiah(totalPengeluaran)}>{formatRupiah(totalPengeluaran)}</p>
             </div>
           </div>
@@ -77,9 +76,9 @@ export default function Dashboard() {
               <DollarSign size={24} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 font-medium truncate">Keuntungan Bersih</p>
-              <p className={`text-xl lg:text-2xl font-bold truncate ${keuntunganBersih >= 0 ? 'text-green-600' : 'text-red-600'}`} title={formatRupiah(keuntunganBersih)}>
-                {formatRupiah(keuntunganBersih)}
+              <p className="text-sm text-gray-500 font-medium truncate">Keuntungan</p>
+              <p className={`text-xl lg:text-2xl font-bold truncate ${keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`} title={formatRupiah(keuntungan)}>
+                {formatRupiah(keuntungan)}
               </p>
             </div>
           </div>
