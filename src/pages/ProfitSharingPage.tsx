@@ -2,20 +2,29 @@ import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { formatRupiah } from '../utils/format';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Trash2, Plus, Edit2, Check, X } from 'lucide-react';
+import { Trash2, Plus, Edit2, Check, X, Calendar } from 'lucide-react';
 
 const COLORS = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#84cc16'];
 
 export default function ProfitSharingPage() {
-  const { partners, updatePartners, orders, expenses, products, addPartner, deletePartner } = useAppContext();
+  const { partners, updatePartners, orders, products, addPartner, deletePartner } = useAppContext();
   
   const [isAdding, setIsAdding] = useState(false);
   const [newPartner, setNewPartner] = useState({ name: '', percentage: 0 });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
-  // Calculate total net profit dynamically from completed orders
-  const completedOrders = orders.filter(o => o.status === 'completed');
+  // Filter orders by date range
+  const filteredOrders = orders.filter(o => {
+    if (startDate && o.date < startDate) return false;
+    if (endDate && o.date > endDate) return false;
+    return true;
+  });
+
+  // Calculate total profit dynamically from completed orders (Omzet - Modal/HPP)
+  const completedOrders = filteredOrders.filter(o => o.status === 'completed');
   const totalPendapatan = completedOrders.reduce((sum, order) => sum + order.total, 0);
   
   const totalModal = completedOrders.reduce((sum, order) => {
@@ -24,11 +33,7 @@ export default function ProfitSharingPage() {
     return sum + (cost * order.qty);
   }, 0);
 
-  const totalPengeluaran = expenses.filter(e => e.type !== 'income').reduce((sum, expense) => sum + expense.amount, 0);
-  const totalPemasukanTambahan = expenses.filter(e => e.type === 'income').reduce((sum, expense) => sum + expense.amount, 0);
-  
-  const keuntunganKotor = totalPendapatan - totalModal;
-  const keuntunganBersih = keuntunganKotor - totalPengeluaran + totalPemasukanTambahan;
+  const keuntungan = totalPendapatan - totalModal;
 
   const handlePercentageChange = (id: string, newPercentage: number) => {
     const updated = partners.map(p => 
@@ -65,17 +70,49 @@ export default function ProfitSharingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Kalkulator Bagi Hasil</h2>
-        <p className="text-gray-500 mt-1">Atur persentase keuntungan untuk masing-masing pihak.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Kalkulator Bagi Hasil</h2>
+          <p className="text-gray-500 mt-1">Atur persentase keuntungan untuk masing-masing pihak.</p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          {(startDate || endDate) && (
+            <button
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+              }}
+              className="px-3 py-2 text-sm font-medium text-sky-600 bg-sky-50 hover:bg-sky-100 rounded-xl transition-colors"
+            >
+              Semua Waktu
+            </button>
+          )}
+          <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-200">
+            <Calendar size={18} className="text-gray-400 ml-2" />
+            <input 
+              type="date" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="text-sm border-none focus:ring-0 outline-none text-gray-600 bg-transparent"
+            />
+            <span className="text-gray-400">-</span>
+            <input 
+              type="date" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="text-sm border-none focus:ring-0 outline-none text-gray-600 bg-transparent"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-            <p className="text-sm font-medium text-green-800 mb-1">Total Keuntungan Bersih Saat Ini</p>
-            <p className={`text-3xl font-bold ${keuntunganBersih >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatRupiah(keuntunganBersih)}
+            <p className="text-sm font-medium text-green-800 mb-1">Total Keuntungan Saat Ini</p>
+            <p className={`text-3xl font-bold ${keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatRupiah(keuntungan)}
             </p>
             <div className="mt-4 space-y-1 pt-3 border-t border-green-200 text-sm">
               <div className="flex justify-between text-gray-700">
@@ -86,16 +123,6 @@ export default function ProfitSharingPage() {
                 <span>Total Modal (HPP)</span>
                 <span className="font-semibold">- {formatRupiah(totalModal)}</span>
               </div>
-              <div className="flex justify-between text-red-600">
-                <span>Total Pengeluaran Ekstra</span>
-                <span className="font-semibold">- {formatRupiah(totalPengeluaran)}</span>
-              </div>
-              {totalPemasukanTambahan > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Pemasukan Tambahan</span>
-                  <span className="font-semibold">+ {formatRupiah(totalPemasukanTambahan)}</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -115,7 +142,7 @@ export default function ProfitSharingPage() {
 
             <div className="space-y-4">
               {partners.map((partner, index) => {
-                const shareAmount = keuntunganBersih > 0 ? (keuntunganBersih * partner.percentage) / 100 : 0;
+                const shareAmount = keuntungan > 0 ? (keuntungan * partner.percentage) / 100 : 0;
                 const isEditing = editingId === partner.id;
                 
                 return (

@@ -346,7 +346,7 @@ export default function OrdersPage() {
     return acc;
   }, {} as Record<string, RecapItem>);
 
-  const recapList: RecapItem[] = Object.values(globalProductRecap).sort((a, b) => {
+  const recapList: RecapItem[] = (Object.values(globalProductRecap) as RecapItem[]).sort((a, b) => {
     const indexA = products.findIndex(p => p.id === (a as RecapItem).id);
     const indexB = products.findIndex(p => p.id === (b as RecapItem).id);
     return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
