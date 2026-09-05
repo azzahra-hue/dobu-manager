@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Ingredient, Recipe } from '../types';
 import { Utensils, Calculator, Plus, Trash2, Save, Copy, CheckCircle, RefreshCw, ChefHat, Sparkles, Filter } from 'lucide-react';
@@ -76,8 +76,20 @@ export default function KitchenPage() {
   // Calculator State
   // Map of productId -> target pcs
   const [targetQuantities, setTargetQuantities] = useState<Record<string, number>>({});
-  const [selectedBatchForImport, setSelectedBatchForImport] = useState<string>('all');
+  const [selectedBatchesForImport, setSelectedBatchesForImport] = useState<string[]>([]);
+  const [isBatchDropdownOpen, setIsBatchDropdownOpen] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsBatchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleTargetQtyChange = (productId: string, val: number) => {
     setTargetQuantities(prev => ({
@@ -89,9 +101,9 @@ export default function KitchenPage() {
   // Auto-import quantities from active orders
   const handleImportFromOrders = () => {
     const activeOrders = orders.filter(o => o.status !== 'cancelled');
-    const filtered = selectedBatchForImport === 'all' 
+    const filtered = selectedBatchesForImport.length === 0 
       ? activeOrders 
-      : activeOrders.filter(o => o.batch === selectedBatchForImport);
+      : activeOrders.filter(o => selectedBatchesForImport.includes(o.batch));
 
     const qtyMap: Record<string, number> = {};
     filtered.forEach(o => {
@@ -99,6 +111,7 @@ export default function KitchenPage() {
     });
 
     setTargetQuantities(qtyMap);
+    setIsBatchDropdownOpen(false);
   };
 
   const handleResetCalculator = () => {
@@ -250,16 +263,55 @@ export default function KitchenPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={selectedBatchForImport}
-                onChange={e => setSelectedBatchForImport(e.target.value)}
-                className="px-3 py-2 text-xs font-semibold rounded-xl border border-gray-300 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="all">Semua Batch Pesanan</option>
-                {uniqueBatches.map(b => (
-                  <option key={b} value={b}>Batch: {b}</option>
-                ))}
-              </select>
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsBatchDropdownOpen(!isBatchDropdownOpen)}
+                  className="px-3 py-2 text-xs font-semibold rounded-xl border border-gray-300 bg-gray-50 text-gray-800 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                >
+                  <Filter size={14} />
+                  {selectedBatchesForImport.length === 0 
+                    ? 'Semua Batch Pesanan' 
+                    : `${selectedBatchesForImport.length} Batch Dipilih`}
+                </button>
+                
+                {isBatchDropdownOpen && (
+                  <div className="absolute top-full left-0 sm:right-0 sm:left-auto mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
+                    <div className="p-2 space-y-1">
+                      <label className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedBatchesForImport.length === 0}
+                          onChange={() => {
+                            setSelectedBatchesForImport([]);
+                            setIsBatchDropdownOpen(false);
+                          }}
+                          className="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500"
+                        />
+                        <span className="text-sm font-semibold text-gray-700">Semua Batch Pesanan</span>
+                      </label>
+                      <div className="my-1 border-t border-gray-100"></div>
+                      {uniqueBatches.map(b => (
+                        <label key={b} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={selectedBatchesForImport.includes(b)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedBatchesForImport([...selectedBatchesForImport, b]);
+                              } else {
+                                setSelectedBatchesForImport(selectedBatchesForImport.filter(item => item !== b));
+                              }
+                            }}
+                            className="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500"
+                          />
+                          <span className="text-sm font-medium text-gray-700 truncate">Batch: {b}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <button
                 type="button"
