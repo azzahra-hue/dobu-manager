@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, getOrderUnitCost } from '../utils/format';
 import { Plus, Trash2, CheckCircle, Clock, XCircle, Copy, MessageSquare, Upload, Edit2, Check, X, ListChecks, Filter, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import Papa from 'papaparse';
 
@@ -44,6 +44,7 @@ export default function OrdersPage() {
       packageType: 'danus' | 'po';
       qty: number;
       status: Order['status'];
+      costPrice?: number;
       isNew?: boolean;
       isDeleted?: boolean;
     }[];
@@ -65,6 +66,7 @@ export default function OrdersPage() {
       
       const price = item.packageType === 'danus' ? product.priceDanus : product.pricePO;
       const total = price * item.qty;
+      const unitCost = item.costPrice !== undefined ? item.costPrice : (product.costPrice || 0);
 
       if (item.isNew) {
         await addOrder({
@@ -76,7 +78,8 @@ export default function OrdersPage() {
           date: editingCustomerFull.date,
           paymentMethod: editingCustomerFull.paymentMethod,
           total,
-          status: item.status
+          status: item.status,
+          costPrice: unitCost
         });
       } else {
         await updateOrder(item.id, {
@@ -87,7 +90,8 @@ export default function OrdersPage() {
           qty: item.qty,
           date: editingCustomerFull.date,
           paymentMethod: editingCustomerFull.paymentMethod,
-          total
+          total,
+          costPrice: unitCost
         });
       }
     }
@@ -157,6 +161,7 @@ export default function OrdersPage() {
         date: newOrder.date,
         paymentMethod: newOrder.paymentMethod,
         total: price * item.qty,
+        costPrice: product.costPrice || 0,
         status: 'pending'
       });
       itemsAdded++;
@@ -266,6 +271,7 @@ export default function OrdersPage() {
                 qty,
                 date,
                 total: price * qty,
+                costPrice: product.costPrice || 0,
                 status: 'pending'
               });
               importCount++;
@@ -942,7 +948,8 @@ export default function OrdersPage() {
           const totalRevenue = batchOrders.reduce((sum, o) => sum + o.total, 0);
           const totalCost = batchOrders.reduce((sum, o) => {
             const p = products.find(prod => prod.id === o.productId);
-            return sum + ((p?.costPrice || 0) * o.qty);
+            const cost = getOrderUnitCost(o, p);
+            return sum + (cost * o.qty);
           }, 0);
           const totalProfit = totalRevenue - totalCost;
           const profitPerPerson = totalProfit / 2;
@@ -1118,7 +1125,8 @@ export default function OrdersPage() {
                                       productId: o.productId,
                                       packageType: o.packageType,
                                       qty: o.qty,
-                                      status: o.status
+                                      status: o.status,
+                                      costPrice: o.costPrice !== undefined ? o.costPrice : (products.find(p => p.id === o.productId)?.costPrice || 0)
                                     }))
                                   });
                                 }}

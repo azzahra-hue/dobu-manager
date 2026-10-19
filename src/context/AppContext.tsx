@@ -1,9 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product, Order, Expense, Partner, Recipe } from '../types';
 import { db } from '../lib/firebase';
-import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
 
 const WORKSPACE_ID = 'admin_bake2026';
+
+export interface ModalPolicy {
+  scope: 'future' | 'from_date' | 'all';
+  effectiveDate?: string;
+}
 
 interface AppContextType {
   isAuthenticated: boolean;
@@ -19,6 +24,11 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id' | 'workspaceId'>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   updateProduct: (id: string, updates: Partial<Omit<Product, 'id' | 'workspaceId'>>) => Promise<void>;
+  updateProductWithModalPolicy: (params: {
+    id: string;
+    updates: Partial<Omit<Product, 'id' | 'workspaceId'>>;
+    modalPolicy?: ModalPolicy;
+  }) => Promise<void>;
   addOrder: (order: Omit<Order, 'id' | 'workspaceId'>) => Promise<void>;
   updateOrderStatus: (id: string, status: Order['status']) => Promise<void>;
   updateOrder: (id: string, updates: Partial<Omit<Order, 'id' | 'workspaceId'>>) => Promise<void>;
@@ -155,11 +165,74 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (!isAuthenticated) return;
     await updateDoc(doc(db, 'products', id), updates);
   };
+
+  const updateProductWithModalPolicy = async ({
+    id,
+    updates,
+    modalPolicy
+  }: {
+    id: string;
+    updates: Partial<Omit<Product, 'id' | 'workspaceId'>>;
+    modalPolicy?: ModalPolicy;
+  }) => {
+    if (!isAuthenticated) return;
+    const currentProduct = products.find(p => p.id === id);
+    if (!currentProduct) return;
+
+    const oldCost = currentProduct.costPrice || 0;
+    const newCost = updates.costPrice !== undefined ? updates.costPrice : oldCost;
+    const isCostChanged = updates.costPrice !== undefined && updates.costPrice !== oldCost;
+
+    const updatedHistory = currentProduct.costPriceHistory ? [...currentProduct.costPriceHistory] : [];
+    if (isCostChanged) {
+      updatedHistory.push({
+        effectiveDate: modalPolicy?.effectiveDate || new Date().toISOString().split('T')[0],
+        costPrice: newCost,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    await updateDoc(doc(db, 'products', id), {
+      ...updates,
+      ...(isCostChanged ? { costPriceHistory: updatedHistory } : {})
+    });
+
+    if (isCostChanged && modalPolicy) {
+      const productOrders = orders.filter(o => o.productId === id);
+      if (productOrders.length > 0) {
+        const chunkSize = 400;
+        for (let i = 0; i < productOrders.length; i += chunkSize) {
+          const chunk = productOrders.slice(i, i + chunkSize);
+          const batch = writeBatch(db);
+
+          chunk.forEach(order => {
+            if (modalPolicy.scope === 'from_date' && modalPolicy.effectiveDate) {
+              if (order.date >= modalPolicy.effectiveDate) {
+                batch.update(doc(db, 'orders', order.id), { costPrice: newCost });
+              } else {
+                const existingCost = order.costPrice !== undefined ? order.costPrice : oldCost;
+                batch.update(doc(db, 'orders', order.id), { costPrice: existingCost });
+              }
+            } else if (modalPolicy.scope === 'future') {
+              const existingCost = order.costPrice !== undefined ? order.costPrice : oldCost;
+              batch.update(doc(db, 'orders', order.id), { costPrice: existingCost });
+            } else if (modalPolicy.scope === 'all') {
+              batch.update(doc(db, 'orders', order.id), { costPrice: newCost });
+            }
+          });
+
+          await batch.commit();
+        }
+      }
+    }
+  };
   
   const addOrder = async (order: Omit<Order, 'id' | 'workspaceId'>) => {
     if (!isAuthenticated) return;
     const newRef = doc(collection(db, 'orders'));
-    await setDoc(newRef, { ...order, id: newRef.id, workspaceId: WORKSPACE_ID });
+    const prod = products.find(p => p.id === order.productId);
+    const unitCost = order.costPrice !== undefined ? order.costPrice : (prod?.costPrice || 0);
+    await setDoc(newRef, { ...order, costPrice: unitCost, id: newRef.id, workspaceId: WORKSPACE_ID });
   };
   const updateOrderStatus = async (id: string, status: Order['status']) => {
     await updateDoc(doc(db, 'orders', id), { status });
@@ -203,7 +276,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{
       isAuthenticated, login, logout, products, orders, expenses, partners, recipes,
       saveRecipe, deleteRecipe,
-      addProduct, deleteProduct, updateProduct,
+      addProduct, deleteProduct, updateProduct, updateProductWithModalPolicy,
       addOrder, updateOrderStatus, updateOrder, deleteOrder,
       addExpense, deleteExpense,
       updatePartners, addPartner, deletePartner

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { formatRupiah } from '../utils/format';
+import { formatRupiah, getOrderUnitCost } from '../utils/format';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Trash2, Plus, Edit2, Check, X, Calendar } from 'lucide-react';
 
@@ -29,7 +29,7 @@ export default function ProfitSharingPage() {
   
   const totalModal = completedOrders.reduce((sum, order) => {
     const product = products.find(p => p.id === order.productId);
-    const cost = product?.costPrice || 0;
+    const cost = getOrderUnitCost(order, product);
     return sum + (cost * order.qty);
   }, 0);
 

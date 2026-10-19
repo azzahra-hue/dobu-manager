@@ -13,3 +13,10 @@ export const formatDate = (dateString: string) => {
 };
 
 export const generateId = () => crypto.randomUUID();
+
+export const getOrderUnitCost = (order: { costPrice?: number }, product?: { costPrice?: number }): number => {
+  if (order.costPrice !== undefined && order.costPrice !== null) {
+    return order.costPrice;
+  }
+  return product?.costPrice || 0;
+};

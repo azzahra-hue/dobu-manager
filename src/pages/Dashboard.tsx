@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { formatRupiah } from '../utils/format';
+import { formatRupiah, getOrderUnitCost } from '../utils/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Calendar, Award } from 'lucide-react';
 
@@ -27,7 +27,7 @@ export default function Dashboard() {
   
   const totalModal = completedOrders.reduce((sum, order) => {
     const product = products.find(p => p.id === order.productId);
-    const cost = product?.costPrice || 0;
+    const cost = getOrderUnitCost(order, product);
     return sum + (cost * order.qty);
   }, 0);
 

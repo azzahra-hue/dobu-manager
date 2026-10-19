@@ -1,3 +1,9 @@
+export interface CostPriceHistory {
+  effectiveDate: string;
+  costPrice: number;
+  updatedAt: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -5,6 +11,7 @@ export interface Product {
   costPrice: number;
   priceDanus: number;
   pricePO: number;
+  costPriceHistory?: CostPriceHistory[];
   workspaceId: string;
 }
 
@@ -17,6 +24,7 @@ export interface Order {
   packageType: 'danus' | 'po';
   qty: number;
   total: number;
+  costPrice?: number;
   status: 'pending' | 'completed' | 'cancelled';
   paymentMethod?: string;
   workspaceId: string;
